@@ -77,7 +77,10 @@ class _LoginPageState extends State<LoginPage> {
                         color:        theme.primary,
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: const Icon(Icons.all_inclusive, color: Colors.white, size: 40),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Image.asset('assets/images/logo.png', width: 46, height: 46, fit: BoxFit.contain),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),

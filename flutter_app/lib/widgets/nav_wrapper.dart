@@ -53,7 +53,7 @@ class _Sidebar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Row(children: [
-                Icon(Icons.all_inclusive, color: theme.primary, size: 28),
+                Image.asset('assets/images/logo.png', width: 28, height: 28, fit: BoxFit.contain),
                 const SizedBox(width: 8),
                 Text('Instaura', style: theme.headlineSmall),
               ]),

@@ -33,7 +33,7 @@ class PendingApprovalPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.hourglass_empty, size: 80, color: theme.secondaryText),
+              Image.asset('assets/images/logo.png', width: 80, height: 80),
               const SizedBox(height: 24),
               Text(
                 'Awaiting Approval',
