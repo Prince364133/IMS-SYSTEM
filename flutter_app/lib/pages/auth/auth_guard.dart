@@ -24,10 +24,8 @@ class _AuthGuardPageState extends State<AuthGuardPage> {
       final role = auth.currentUser?.role ?? 'pending';
       if (role == 'pending') {
         context.go('/pending');
-      } else if (role == 'superadmin') {
-        context.go('/superadmin');
       } else {
-        context.go('/home');
+        context.go('/home'); // admin, superadmin, hr, employee, client all go to /home
       }
     } else {
       context.go('/login');

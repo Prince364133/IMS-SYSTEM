@@ -39,10 +39,8 @@ class _LoginPageState extends State<LoginPage> {
         final role = context.read<AuthService>().currentUser?.role ?? 'pending';
         if (role == 'pending') {
           context.go('/pending');
-        } else if (role == 'superadmin') {
-          context.go('/superadmin');
         } else {
-          context.go('/home');
+          context.go('/home'); // admin, superadmin, hr, employee, client all use /home
         }
       }
     } on ApiException catch (e) {

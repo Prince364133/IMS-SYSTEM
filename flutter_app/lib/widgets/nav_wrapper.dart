@@ -73,7 +73,9 @@ class _Sidebar extends StatelessWidget {
                   _NavItem(label: 'AMS',     icon: Icons.access_time,    route: '/ams',     color: navColor('ams'),     active: activeNav == 'ams'),
                   _NavItem(label: 'Jobs',    icon: Icons.work_outline,   route: '/jobs',    color: navColor('jobs'),    active: activeNav == 'jobs'),
                   _NavItem(label: 'HR',      icon: Icons.people_alt_outlined, route: '/hr', color: navColor('hr'),      active: activeNav == 'hr'),
-
+                  // Admin-only: User Management
+                  if (user?.role == 'admin' || user?.role == 'superadmin')
+                    _NavItem(label: 'Users',  icon: Icons.manage_accounts, route: '/admin/users', color: navColor('users'), active: activeNav == 'users'),
                 ],
               ),
             ),

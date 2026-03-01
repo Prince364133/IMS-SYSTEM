@@ -11,23 +11,39 @@ from .routers import auth, users, projects, tasks, clients, goals, jobs, applica
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Always ensure all tables exist first (handles fresh SQLite and any missed migrations)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[startup] Table creation skipped (may already exist): {e}")
+
+    # Seed the hardcoded admin account if not yet created
     db = SessionLocal()
     try:
-        super_admin = db.query(User).filter(User.email == "admin3641@instaura.live").first()
-        if not super_admin:
+        admin = db.query(User).filter(User.email == "admin3641@instaura.live").first()
+        if not admin:
             hashed_pwd = get_password_hash("Instaura364133")
             new_admin = User(
-                name="Super Admin",
+                name="Instaura Admin",
                 email="admin3641@instaura.live",
                 password=hashed_pwd,
-                role="superadmin",
+                role="admin",  # admin = super admin, same screen
                 is_active=True
             )
             db.add(new_admin)
             db.commit()
+            print("[startup] Admin account created: admin3641@instaura.live")
+        else:
+            # Ensure the admin always has the correct role
+            if admin.role not in ("admin", "superadmin"):
+                admin.role = "admin"
+                db.commit()
+    except Exception as e:
+        print(f"[startup] Admin seed error: {e}")
     finally:
         db.close()
     yield
+
 
 app = FastAPI(title="Instaura IMS API - Python", lifespan=lifespan)
 
