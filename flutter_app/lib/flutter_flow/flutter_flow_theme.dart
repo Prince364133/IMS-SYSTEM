@@ -15,12 +15,12 @@ class FlutterFlowTheme {
   FlutterFlowTheme._({this.isDark = false});
 
   // ─── Brand Colors ───────────────────────────────────────────────────────
-  Color get primary             => const Color(0xFF4B39EF);
+  Color get primary             => const Color(0xFFCF1D29);
   Color get secondary           => const Color(0xFF39D2C0);
   Color get tertiary            => const Color(0xFFEE8B60);
   Color get error               => const Color(0xFFFF5963);
   Color get alternate           => isDark ? const Color(0xFF262D34) : const Color(0xFFE0E3E7);
-  Color get accent1             => const Color(0xFF4B39EF).withOpacity(0.15);
+  Color get accent1             => const Color(0xFFCF1D29).withOpacity(0.15);
   Color get accent2             => const Color(0xFF39D2C0).withOpacity(0.15);
   Color get accent3             => const Color(0xFFEE8B60).withOpacity(0.15);
   Color get accent4             => isDark ? const Color(0x89FFFFFF) : const Color(0x89000000);
@@ -77,7 +77,7 @@ class FlutterFlowTheme {
     useMaterial3: true,
     brightness:   Brightness.light,
     colorScheme:  ColorScheme.fromSeed(
-      seedColor: const Color(0xFF4B39EF),
+      seedColor: const Color(0xFFCF1D29),
       brightness: Brightness.light,
     ),
     scaffoldBackgroundColor: const Color(0xFFF1F4F8),
@@ -93,7 +93,7 @@ class FlutterFlowTheme {
     useMaterial3: true,
     brightness:   Brightness.dark,
     colorScheme:  ColorScheme.fromSeed(
-      seedColor: const Color(0xFF4B39EF),
+      seedColor: const Color(0xFFCF1D29),
       brightness: Brightness.dark,
     ),
     scaffoldBackgroundColor: const Color(0xFF1D2428),
