@@ -1,0 +1,42 @@
+# Backend .env
+backend/.env
+
+# Node
+**/node_modules/
+**/npm-debug.log
+.DS_Store
+_backend_nodejs_archive/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+backend/alembic/versions/*_initial_schema.py
+
+# Flutter build artifacts
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
+flutter_app/.packages
+flutter_app/pubspec.lock
+*.iml
+
+# Flutter generated
+flutter_app/android/.gradle/
+flutter_app/android/local.properties
+flutter_app/android/captures/
+flutter_app/ios/Pods/
+flutter_app/ios/.symlinks/
+
+# Editor
+.idea/
+.vscode/
+*.swp

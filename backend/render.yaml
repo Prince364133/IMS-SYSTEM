@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: instaura-ims-api
+    env: python
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: instaura-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: INIT_SUPER_ADMIN_PASSWORD
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_DAYS
+        value: 7
+
+databases:
+  - name: instaura-db
+    databaseName: instaura_ims
+    plan: free

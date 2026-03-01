@@ -1,0 +1,57 @@
+name: instaura_ims
+description: IMS - Inventory Management System for Instaura
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP & API
+  http: ^1.2.1
+  dio: ^5.4.3+1
+
+  # State Management
+  provider: ^6.1.2
+
+  # Navigation
+  go_router: ^13.2.1
+
+  # Local Storage (JWT token)
+  shared_preferences: ^2.2.3
+
+  # Image
+  cached_network_image: ^3.3.1
+  image_picker: ^1.0.7
+
+  # Fonts & Icons
+  google_fonts: ^6.2.1
+  font_awesome_flutter: ^10.6.0
+
+  # UI Utilities
+  flutter_svg: ^2.0.10+1
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+  timeago: ^3.6.1
+  percent_indicator: ^4.2.3
+  fl_chart: ^0.67.0
+
+  # WebView (for webflow page)
+  webview_flutter: ^4.8.0
+
+  # Utilities
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
