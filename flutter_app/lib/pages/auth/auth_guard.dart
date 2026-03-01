@@ -21,7 +21,14 @@ class _AuthGuardPageState extends State<AuthGuardPage> {
   void _check() {
     final auth = context.read<AuthService>();
     if (auth.isLoggedIn) {
-      context.go('/home');
+      final role = auth.currentUser?.role ?? 'pending';
+      if (role == 'pending') {
+        context.go('/pending');
+      } else if (role == 'superadmin') {
+        context.go('/superadmin');
+      } else {
+        context.go('/home');
+      }
     } else {
       context.go('/login');
     }

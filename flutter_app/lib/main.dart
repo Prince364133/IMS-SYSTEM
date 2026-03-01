@@ -33,6 +33,8 @@ import 'pages/webflow/webflow_page.dart';
 import 'pages/hr/hr_dashboard_page.dart';
 import 'pages/hr/hr_employees_page.dart';
 import 'pages/hr/hr_employee_detail_page.dart';
+import 'pages/auth/pending_approval_page.dart';
+import 'pages/admin/superadmin_dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +57,8 @@ final GoRouter _router = GoRouter(
     GoRoute(path: '/auth',         builder: (c, s) => const AuthGuardPage()),
     GoRoute(path: '/login',        builder: (c, s) => const LoginPage()),
     GoRoute(path: '/create-profile', builder: (c, s) => const CreateProfilePage()),
+    GoRoute(path: '/pending',      builder: (c, s) => const PendingApprovalPage()),
+    GoRoute(path: '/superadmin',   builder: (c, s) => const SuperAdminDashboardPage()),
     GoRoute(path: '/home',         builder: (c, s) => const HomePage()),
     GoRoute(path: '/projects',     builder: (c, s) => const ProjectListPage()),
     GoRoute(path: '/projects/new', builder: (c, s) => const CreateProjectPage()),

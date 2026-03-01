@@ -21,7 +21,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         name=user.name,
         email=user.email,
         password=hashed_password,
-        role=user.role
+        role="pending"
     )
     db.add(new_user)
     db.commit()

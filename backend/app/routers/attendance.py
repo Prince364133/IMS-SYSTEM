@@ -110,7 +110,7 @@ def update_attendance(
 
 @router.delete("/{att_id}")
 def delete_attendance(att_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role not in ["admin", "hr"]:
+    if current_user.role not in ["admin", "hr", "superadmin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
         
     att = db.query(Attendance).filter(Attendance.id == att_id).first()

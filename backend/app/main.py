@@ -1,19 +1,41 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
+from contextlib import asynccontextmanager
+
+from .database import engine, Base, SessionLocal
+from .models.user import User
+from .middleware.auth import get_password_hash
 
 # Import all routers
 from .routers import auth, users, projects, tasks, clients, goals, jobs, applications, chat, attendance, hrms
 
-# Create tables for local dev bypass (Alembic usually handles this in prod)
-# Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db = SessionLocal()
+    try:
+        super_admin = db.query(User).filter(User.email == "admin3641@instaura.live").first()
+        if not super_admin:
+            hashed_pwd = get_password_hash("Instaura364133")
+            new_admin = User(
+                name="Super Admin",
+                email="admin3641@instaura.live",
+                password=hashed_pwd,
+                role="superadmin",
+                is_active=True
+            )
+            db.add(new_admin)
+            db.commit()
+    finally:
+        db.close()
+    yield
 
-app = FastAPI(title="Instaura IMS API - Python")
+app = FastAPI(title="Instaura IMS API - Python", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
+
     allow_methods=["*"],
     allow_headers=["*"],
 )

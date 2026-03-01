@@ -35,7 +35,16 @@ class _LoginPageState extends State<LoginPage> {
         _emailCtrl.text.trim(),
         _passwordCtrl.text,
       );
-      if (mounted) context.go('/home');
+      if (mounted) {
+        final role = context.read<AuthService>().currentUser?.role ?? 'pending';
+        if (role == 'pending') {
+          context.go('/pending');
+        } else if (role == 'superadmin') {
+          context.go('/superadmin');
+        } else {
+          context.go('/home');
+        }
+      }
     } on ApiException catch (e) {
       setState(() => _errorMsg = e.message);
     } catch (_) {

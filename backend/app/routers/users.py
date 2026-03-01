@@ -5,7 +5,7 @@ from typing import List, Optional
 from ..database import get_db
 from ..models.user import User
 from ..schemas.user import UserOut, UserUpdate
-from ..middleware.auth import get_current_user
+from ..middleware.auth import get_current_user, get_password_hash
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -52,10 +52,20 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
         
     # Only admin/hr or self can update
-    if current_user.role not in ["admin", "hr"] and current_user.id != user_id:
+    if current_user.role not in ["admin", "hr", "superadmin"] and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to update this user")
         
     update_data = user_update.model_dump(exclude_unset=True)
+    
+    # Restrict sensitive fields from self-update unless they are an admin
+    if current_user.role not in ["admin", "hr", "superadmin"] and current_user.id == user_id:
+        if "role" in update_data:
+            del update_data["role"]
+        # Normal users should use change-password endpoint, but if we allow it here, protect it
+        
+    if "password" in update_data and update_data["password"]:
+        update_data["password"] = get_password_hash(update_data["password"])
+        
     for key, value in update_data.items():
         setattr(user, key, value)
         
@@ -65,7 +75,7 @@ def update_user(
 
 @router.delete("/{user_id}")
 def delete_user(user_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role not in ["admin", "hr"]:
+    if current_user.role not in ["admin", "hr", "superadmin"]:
         raise HTTPException(status_code=403, detail="Not authorized to delete user")
         
     user = db.query(User).filter(User.id == user_id).first()

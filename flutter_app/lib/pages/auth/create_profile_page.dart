@@ -45,7 +45,7 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
         password: _passCtrl.text,
         role:     _role,
       );
-      if (mounted) context.go('/home');
+      if (mounted) context.go('/pending');
     } on ApiException catch (e) {
       setState(() => _errorMsg = e.message);
     } catch (_) {

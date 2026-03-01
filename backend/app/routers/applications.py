@@ -38,7 +38,7 @@ def update_application(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role not in ["admin", "hr", "manager"]:
+    if current_user.role not in ["admin", "hr", "manager", "superadmin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
         
     app_doc = db.query(Application).filter(Application.id == app_id).first()
