@@ -9,7 +9,7 @@ const String _kUser  = 'auth_user';
 // ─── Switch between dev and prod ─────────────────────────────────────────────
 const String kBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:5000/api', // Android emulator → localhost
+  defaultValue: 'http://127.0.0.1:5000/api', // localhost for web dev
 );
 
 class ApiService {
