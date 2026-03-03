@@ -20,9 +20,9 @@ class FlutterFlowTheme {
   Color get tertiary            => const Color(0xFFEE8B60);
   Color get error               => const Color(0xFFFF5963);
   Color get alternate           => isDark ? const Color(0xFF262D34) : const Color(0xFFE0E3E7);
-  Color get accent1             => const Color(0xFFCF1D29).withOpacity(0.15);
-  Color get accent2             => const Color(0xFF39D2C0).withOpacity(0.15);
-  Color get accent3             => const Color(0xFFEE8B60).withOpacity(0.15);
+  Color get accent1             => const Color(0xFFCF1D29).withValues(alpha: 0.15);
+  Color get accent2             => const Color(0xFF39D2C0).withValues(alpha: 0.15);
+  Color get accent3             => const Color(0xFFEE8B60).withValues(alpha: 0.15);
   Color get accent4             => isDark ? const Color(0x89FFFFFF) : const Color(0x89000000);
 
   // ─── Background & Surface ──────────────────────────────────────────────

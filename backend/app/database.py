@@ -1,27 +1,41 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 import os
-from dotenv import load_dotenv
+from .config import settings
 
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./instaura.db")
+DATABASE_URL = settings.DATABASE_URL
 
 # SQLAlchemy 1.4+ requires postgresql:// instead of postgres://
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# SQLite specifically needs check_same_thread=False
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# For async, we need postgresql+asyncpg:// or sqlite+aiosqlite://
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif DATABASE_URL.startswith("sqlite:///"):
+    DATABASE_URL = DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Async engine
+engine = create_async_engine(DATABASE_URL, echo=False)
+
+# Async session factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
 
 Base = declarative_base()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

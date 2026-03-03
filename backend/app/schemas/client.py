@@ -1,15 +1,15 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
 class ClientBase(BaseModel):
-    name: str
-    email: EmailStr
-    phone: Optional[str] = ""
-    company: Optional[str] = ""
-    address: Optional[str] = ""
-    website: Optional[str] = ""
-    notes: Optional[str] = ""
+    name: str = Field(..., description="Client or company name", example="Acme Corp")
+    email: EmailStr = Field(..., description="Client contact email", example="contact@acmecorp.com")
+    phone: Optional[str] = Field("", description="Contact phone number", example="+1987654321")
+    company: Optional[str] = Field("", description="Company name (if different from name)", example="Acme Industries")
+    address: Optional[str] = Field("", description="Physical office address", example="123 Tech Lane, Silicon Valley")
+    website: Optional[str] = Field("", description="Company website URL", example="https://acmecorp.com")
+    notes: Optional[str] = Field("", description="Internal notes about the client")
 
 class ClientCreate(ClientBase):
     project_ids: Optional[List[str]] = []

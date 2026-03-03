@@ -1,17 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
 class ProjectBase(BaseModel):
-    name: str
-    description: Optional[str] = ""
-    status: Optional[str] = "not_started"
-    priority: Optional[str] = "medium"
-    deadline: Optional[datetime] = None
-    progress: Optional[float] = 0.0
+    name: str = Field(..., description="The name of the project", example="Website Redesign")
+    description: Optional[str] = Field("", description="A detailed description of the project", example="Overhauling the company's public website.")
+    status: Optional[str] = Field("not_started", description="Current status: not_started, in_progress, on_hold, completed", example="in_progress")
+    priority: Optional[str] = Field("medium", description="Priority level: low, medium, high, critical", example="high")
+    deadline: Optional[datetime] = Field(None, description="Project completion deadline")
+    progress: Optional[float] = Field(0.0, description="Project completion percentage (0.0 to 1.0)", example=0.45)
 
 class ProjectCreate(ProjectBase):
-    owner_id: str
+    owner_id: Optional[str] = None
     client_id: Optional[str] = None
     tags: Optional[List[str]] = []
     member_ids: Optional[List[str]] = []

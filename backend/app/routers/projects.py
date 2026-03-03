@@ -1,74 +1,47 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 
 from ..database import get_db
-from ..models.project import Project
 from ..models.user import User
 from ..schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
 from ..middleware.auth import get_current_user
+from ..middleware.rbac import require_hr
+from ..services.project_service import ProjectService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 @router.get("")
-def get_projects(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    projects = db.query(Project).all()
-    # Frontend expects {"projects": [...]}
-    return {"projects": projects}
+async def get_projects(
+    search: Optional[str] = None,
+    limit: int = Query(100, ge=1),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    projects, total = await ProjectService.get_projects(db, current_user, search, limit, offset)
+    return {"projects": projects, "total": total}
 
-@router.post("")
-def create_project(project: ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    proj_data = project.model_dump()
-    tags = proj_data.pop("tags", [])
-    member_ids = proj_data.pop("member_ids", [])
-    
-    new_project = Project(**proj_data)
-    new_project.tags = ",".join(tags) if tags else ""
-    new_project.member_ids = ",".join(member_ids) if member_ids else ""
-    
-    db.add(new_project)
-    db.commit()
-    db.refresh(new_project)
+@router.post("", dependencies=[require_hr])
+async def create_project(project: ProjectCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    new_project = await ProjectService.create_project(db, project, current_user)
     return {"project": new_project}
 
 @router.get("/{project_id}")
-def get_project(project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+async def get_project(project_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    project = await ProjectService.get_by_id(db, project_id)
     return {"project": project}
 
-@router.put("/{project_id}")
-def update_project(
+@router.put("/{project_id}", dependencies=[require_hr])
+async def update_project(
     project_id: str, 
     project_update: ProjectUpdate, 
-    db: Session = Depends(get_db), 
+    db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-        
-    update_data = project_update.model_dump(exclude_unset=True)
-    
-    if "tags" in update_data:
-        project.tags = ",".join(update_data.pop("tags"))
-    if "member_ids" in update_data:
-        project.member_ids = ",".join(update_data.pop("member_ids"))
-        
-    for key, value in update_data.items():
-        setattr(project, key, value)
-        
-    db.commit()
-    db.refresh(project)
+    project = await ProjectService.update_project(db, project_id, project_update, current_user)
     return {"project": project}
 
-@router.delete("/{project_id}")
-def delete_project(project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-        
-    db.delete(project)
-    db.commit()
-    return {"message": "Project deleted successfully"}
+@router.delete("/{project_id}", dependencies=[require_hr])
+async def delete_project(project_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return await ProjectService.delete_project(db, project_id, current_user)

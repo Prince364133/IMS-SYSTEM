@@ -1,57 +1,41 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..models.client import Client
 from ..models.user import User
 from ..schemas.client import ClientCreate, ClientUpdate
 from ..middleware.auth import get_current_user
+from ..middleware.rbac import require_hr
+from ..services.client_service import ClientService
 
 router = APIRouter(prefix="/api/clients", tags=["clients"])
 
 @router.get("")
-def get_clients(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    clients = db.query(Client).all()
+async def get_clients(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    clients = await ClientService.get_clients(db)
     return {"clients": clients}
 
-@router.post("")
-def create_client(client: ClientCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    client_data = client.model_dump()
-    project_ids = client_data.pop("project_ids", [])
-    
-    new_client = Client(**client_data)
-    new_client.project_ids = ",".join(project_ids) if project_ids else ""
-    
-    db.add(new_client)
-    db.commit()
-    db.refresh(new_client)
+@router.post("", dependencies=[require_hr])
+async def create_client(client: ClientCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    new_client = await ClientService.create_client(db, client, current_user)
     return {"client": new_client}
 
 @router.get("/{client_id}")
-def get_client(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    client = db.query(Client).filter(Client.id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
+async def get_client(client_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    client = await ClientService.get_by_id(db, client_id)
     return {"client": client}
 
-@router.put("/{client_id}")
-def update_client(
+@router.put("/{client_id}", dependencies=[require_hr])
+async def update_client(
     client_id: str,
     client_update: ClientUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    client = db.query(Client).filter(Client.id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Client not found")
-        
-    update_data = client_update.model_dump(exclude_unset=True)
-    if "project_ids" in update_data:
-        client.project_ids = ",".join(update_data.pop("project_ids"))
-        
-    for key, value in update_data.items():
-        setattr(client, key, value)
-        
-    db.commit()
-    db.refresh(client)
+    client = await ClientService.update_client(db, client_id, client_update, current_user)
     return {"client": client}
+
+@router.delete("/{client_id}", dependencies=[require_hr])
+async def delete_client(client_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return await ClientService.delete_client(db, client_id, current_user)

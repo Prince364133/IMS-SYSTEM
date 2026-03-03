@@ -1,16 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 class JobBase(BaseModel):
-    title: str
-    department: Optional[str] = ""
-    location: Optional[str] = "On-site"
-    employee_type: Optional[str] = "Full-time"
-    description: Optional[str] = ""
-    requirements: Optional[str] = ""
-    status: Optional[str] = "open"
-    deadline: Optional[datetime] = None
+    title: str = Field(..., description="Job title", example="Mobile Flutter Developer")
+    department: Optional[str] = Field("", description="Hiring department", example="Software")
+    location: Optional[str] = Field("On-site", description="Work location: On-site, Remote, Hybrid", example="Remote")
+    employee_type: Optional[str] = Field("Full-time", description="Contract type: Full-time, Part-time, Contract", example="Full-time")
+    description: Optional[str] = Field("", description="Detailed job description")
+    requirements: Optional[str] = Field("", description="Comma-separated or bulleted requirements")
+    status: Optional[str] = Field("open", description="Job status: open, closed, draft", example="open")
+    deadline: Optional[datetime] = Field(None, description="Application deadline")
 
 class JobCreate(JobBase):
     pass

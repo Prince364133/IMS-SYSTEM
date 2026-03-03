@@ -1,14 +1,14 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
 
 class UserBase(BaseModel):
-    name: str
-    email: EmailStr
-    role: Optional[str] = "employee"
-    phone: Optional[str] = ""
-    department: Optional[str] = ""
-    position: Optional[str] = ""
+    name: str = Field(..., description="The full name of the user", example="John Doe")
+    email: EmailStr = Field(..., description="Electronic mail address", example="john.doe@example.com")
+    role: Optional[str] = Field("employee", description="User role: admin, manager, employee", example="manager")
+    phone: Optional[str] = Field("", description="Phone number", example="+1234567890")
+    department: Optional[str] = Field("", description="Department name", example="Engineering")
+    position: Optional[str] = Field("", description="Job title", example="Senior Developer")
 
 class UserCreate(UserBase):
     password: str

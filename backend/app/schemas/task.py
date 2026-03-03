@@ -1,14 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 class TaskBase(BaseModel):
-    title: str
-    description: Optional[str] = ""
-    status: Optional[str] = "todo"
-    priority: Optional[str] = "medium"
-    due_date: Optional[datetime] = None
-    attachment_urls: Optional[str] = ""
+    title: str = Field(..., description="The title of the task", example="Design Homepage")
+    description: Optional[str] = Field("", description="A detailed description of the task", example="Create high-fidelity mockups for the homepage.")
+    status: Optional[str] = Field("todo", description="Current status: todo, in_progress, review, done", example="todo")
+    priority: Optional[str] = Field("medium", description="Priority level: low, medium, high, critical", example="high")
+    due_date: Optional[datetime] = Field(None, description="Task due date")
+    attachment_urls: Optional[str] = Field("", description="Comma-separated list of attachment URLs")
 
 class TaskCreate(TaskBase):
     project_id: str

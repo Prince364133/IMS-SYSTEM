@@ -1,55 +1,46 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from ..database import get_db
-from ..models.job import Job
 from ..models.user import User
 from ..schemas.job import JobCreate, JobUpdate
 from ..middleware.auth import get_current_user
+from ..middleware.rbac import require_hr
+from ..services.job_service import JobService
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 @router.get("")
-def get_jobs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    jobs = db.query(Job).all()
+async def get_jobs(
+    department: Optional[str] = None,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    jobs = await JobService.get_jobs(db, department, search)
     return {"jobs": jobs}
 
-@router.post("")
-def create_job(job: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role not in ["admin", "hr", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Not authorized to create jobs")
-        
-    new_job = Job(**job.model_dump())
-    db.add(new_job)
-    db.commit()
-    db.refresh(new_job)
+@router.post("", dependencies=[require_hr])
+async def create_job(job: JobCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    new_job = await JobService.create_job(db, job, current_user)
     return {"job": new_job}
 
 @router.get("/{job_id}")
-def get_job(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+async def get_job(job_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    job = await JobService.get_by_id(db, job_id)
     return {"job": job}
 
-@router.put("/{job_id}")
-def update_job(
+@router.put("/{job_id}", dependencies=[require_hr])
+async def update_job(
     job_id: str,
     job_update: JobUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role not in ["admin", "hr", "superadmin"]:
-        raise HTTPException(status_code=403, detail="Not authorized to update jobs")
-        
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-        
-    update_data = job_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(job, key, value)
-        
-    db.commit()
-    db.refresh(job)
+    job = await JobService.update_job(db, job_id, job_update, current_user)
     return {"job": job}
+
+@router.delete("/{job_id}", dependencies=[require_hr])
+async def delete_job(job_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return await JobService.delete_job(db, job_id, current_user)
