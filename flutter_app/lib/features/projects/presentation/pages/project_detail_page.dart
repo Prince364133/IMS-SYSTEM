@@ -6,7 +6,7 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../flutter_flow/flutter_flow_theme.dart';
 import '../../domain/models/project_model.dart';
 import '../../../../shared/widgets/glass_card.dart';
-import '../../../../features/auth/application/auth_service.dart';
+import '../../../auth/application/auth_provider.dart';
 
 class ProjectDetailPage extends ConsumerStatefulWidget {
   final String projectId;
@@ -85,7 +85,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage>
   }
 
   bool _canEdit() {
-    final userRole = ref.read(authProvider).userRole;
+    final userRole = ref.read(authProvider).user?.role;
     return userRole == 'admin' || userRole == 'manager';
   }
 
@@ -173,7 +173,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage>
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: theme.labelSmall),
+            Text(label, style: theme.labelMedium),
             Text(val,
                 style: theme.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
           ],
@@ -246,7 +246,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage>
                     decoration: isDone ? TextDecoration.lineThrough : null)),
             subtitle: Text(
                 'Status: ${task['status']} | Priority: ${task['priority'] ?? 'medium'}',
-                style: theme.labelSmall),
+                style: theme.labelMedium),
             trailing: _canEdit()
                 ? PopupMenuButton(
                     icon: const Icon(Icons.more_vert),
