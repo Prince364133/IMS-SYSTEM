@@ -90,95 +90,163 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage>
   }
 
   Widget _buildOverviewTab(FlutterFlowTheme theme) {
+    final project = _project!;
+    final progress = project.progress;
+    final deadline = project.deadline != null
+        ? project.deadline.toString().substring(0, 10)
+        : 'No deadline set';
+    final description = (project.description?.isNotEmpty == true)
+        ? project.description!
+        : 'No description provided for this project.';
+    final doneTasks = _tasks
+        .where((t) => t['status'] == 'done' || t['status'] == 'completed')
+        .length;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        GlassCard(
+        // Progress hero card
+        Container(
           padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [theme.primary, theme.primary.withValues(alpha: 0.6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Project Description', style: theme.labelMedium),
+              const Text('Overall Progress',
+                  style: TextStyle(color: Colors.white70, fontSize: 13)),
               const SizedBox(height: 8),
-              Text(
-                _project?.description?.isNotEmpty == true
-                    ? _project!.description!
-                    : 'No description provided.',
-                style: theme.bodyMedium,
-              ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 20,
-                runSpacing: 20,
-                children: [
-                  _buildStatItem(
-                      theme,
-                      Icons.calendar_today,
-                      'Deadline',
-                      _project?.deadline?.toString().substring(0, 10) ??
-                          'Not set'),
-                  _buildStatItem(theme, Icons.check_circle_outline, 'Tasks',
-                      '${_tasks.length} Total'),
-                  _buildStatItem(theme, Icons.timeline, 'Progress',
-                      '${_project!.progress.toInt()}%'),
-                ],
+              Text('${progress.toInt()}%',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: progress / 100,
+                  minHeight: 10,
+                  backgroundColor: Colors.white30,
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        // Stats row
+        Row(
+          children: [
+            Expanded(
+                child: _buildStatCard(theme, Icons.calendar_today_outlined,
+                    'Deadline', deadline, Colors.orange)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildStatCard(theme, Icons.task_alt, 'Tasks Done',
+                    '$doneTasks / ${_tasks.length}', Colors.green)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _buildStatCard(
+                    theme,
+                    Icons.flag_outlined,
+                    'Priority',
+                    (project.priority ?? 'medium').toUpperCase(),
+                    theme.primary)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Description
         GlassCard(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Project Reports', style: theme.titleMedium),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: theme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Icon(Icons.analytics_outlined, color: theme.primary),
-                ),
-                title: Text('Performance Analytics', style: theme.bodyMedium),
-                trailing: Icon(Icons.download, color: theme.secondaryText),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Generating report...')));
-                },
-              ),
+              Row(children: [
+                Icon(Icons.description_outlined,
+                    color: theme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text('Project Description', style: theme.titleSmall),
+              ]),
+              const SizedBox(height: 12),
+              Text(description, style: theme.bodyMedium),
             ],
           ),
-        )
+        ),
+        const SizedBox(height: 16),
+        // Reports
+        GlassCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.analytics_outlined, color: theme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text('Reports & Analytics', style: theme.titleSmall),
+              ]),
+              const SizedBox(height: 12),
+              _buildReportItem(theme, Icons.bar_chart, 'Task Completion Report',
+                  'View task breakdown and trends'),
+              const Divider(),
+              _buildReportItem(theme, Icons.people_outline, 'Team Productivity',
+                  'Individual contributions overview'),
+              const Divider(),
+              _buildReportItem(theme, Icons.timeline, 'Project Timeline',
+                  'Milestones and Gantt view'),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildStatItem(
-      FlutterFlowTheme theme, IconData icon, String label, String val) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: theme.secondaryBackground.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: theme.primary, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: theme.labelMedium),
-            Text(val,
-                style: theme.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
-          ],
-        )
-      ],
+  Widget _buildStatCard(FlutterFlowTheme theme, IconData icon, String label,
+      String val, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.secondaryBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.alternate),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 8),
+          Text(val,
+              style: theme.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+          Text(label, style: theme.labelMedium),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportItem(
+      FlutterFlowTheme theme, IconData icon, String title, String subtitle) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+            color: theme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: theme.primary, size: 18),
+      ),
+      title: Text(title,
+          style: theme.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: theme.labelMedium),
+      trailing:
+          Icon(Icons.download_outlined, color: theme.secondaryText, size: 20),
+      onTap: () => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Generating "$title"...'))),
     );
   }
 

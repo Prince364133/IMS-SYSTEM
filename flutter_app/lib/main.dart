@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:ui';
+import 'package:go_router/go_router.dart';
 // import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // This will be available after generation
 
 import 'core/di/service_locator.dart';
