@@ -145,28 +145,34 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildKPIGrid(FlutterFlowTheme theme, DashboardState state) {
-    final hrms = state.stats['hrms'];
-    final emps = hrms?['employees']?['total'] ?? 0;
-    final projs = state.stats['projects'] ?? 0;
-    final tasks = state.stats['tasks'] ?? 0;
-    final att = hrms?['attendance']?['breakdown']?['present'] ?? 0;
-
     return GridView.count(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.6,
+      crossAxisCount: 4,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.4,
       children: [
-        _kpiCard(
-            theme, 'Team Size', '$emps', Icons.people_rounded, theme.primary),
-        _kpiCard(theme, 'Projects', '$projs', Icons.account_tree_rounded,
-            theme.secondary),
-        _kpiCard(theme, 'Attended', '$att', Icons.how_to_reg_rounded,
-            theme.tertiary),
-        _kpiCard(theme, 'Open Tasks', '$tasks', Icons.task_alt_rounded,
-            Colors.blueAccent),
+        // ── Team ─────────────────────────────────────────────────────
+        _kpiCard(theme, 'Team Size', '${state.totalEmployees}',
+            Icons.people_rounded, theme.primary),
+        _kpiCard(theme, 'Active Emps', '${state.totalEmployees}',
+            Icons.person_rounded, Colors.green),
+        // ── Projects ──────────────────────────────────────────────────
+        _kpiCard(theme, 'Total Projects', '${state.totalProjects}',
+            Icons.account_tree_rounded, theme.secondary),
+        _kpiCard(theme, 'Active', '${state.activeProjects}',
+            Icons.timelapse_rounded, Colors.orange),
+        // ── Tasks ─────────────────────────────────────────────────────
+        _kpiCard(theme, 'Open Tasks', '${state.pendingTasksCount}',
+            Icons.task_alt_rounded, Colors.blueAccent),
+        _kpiCard(theme, 'Done Tasks', '${state.completedTasksCount}',
+            Icons.check_circle_rounded, Colors.tealAccent),
+        // ── Attendance ─────────────────────────────────────────────────
+        _kpiCard(theme, 'Present', '${state.presentToday}',
+            Icons.how_to_reg_rounded, theme.tertiary),
+        _kpiCard(theme, 'On Leave', '${state.onLeaveToday}',
+            Icons.beach_access_rounded, Colors.purpleAccent),
       ],
     );
   }

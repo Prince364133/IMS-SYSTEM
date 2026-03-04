@@ -172,7 +172,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage>
                 Icon(Icons.description_outlined,
                     color: theme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('Project Description', style: theme.titleSmall),
+                Text('Project Description', style: theme.labelMedium),
               ]),
               const SizedBox(height: 12),
               Text(description, style: theme.bodyMedium),
@@ -189,7 +189,7 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage>
               Row(children: [
                 Icon(Icons.analytics_outlined, color: theme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('Reports & Analytics', style: theme.titleSmall),
+                Text('Reports & Analytics', style: theme.labelMedium),
               ]),
               const SizedBox(height: 12),
               _buildReportItem(theme, Icons.bar_chart, 'Task Completion Report',
