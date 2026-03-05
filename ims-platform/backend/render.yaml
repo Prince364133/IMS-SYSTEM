@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: instaura-ims-backend
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: N8N_BASE_URL
+        sync: false
+      - key: N8N_WEBHOOK_SECRET
+        sync: false
+      - key: ADMIN_EMAIL
+        value: admin3641@instaura.live
+      - key: ADMIN_PASSWORD
+        sync: false
