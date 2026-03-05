@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Instaura IMS
 
 > Inventory Management System for Instaura — Flutter Mobile App + Node.js/MongoDB Backend
@@ -165,3 +166,6 @@ flutter build apk --release
 ## 👤 Author
 
 Made for **Instaura** — [github.com/Prince364133/INSTAURA-WEB](https://github.com/Prince364133/INSTAURA-WEB)
+=======
+# IMS-SYSTEM
+>>>>>>> ed37f47ad24c87a90855d96e3305941e15eceabd
