@@ -1,93 +1,74 @@
-# Instaura IMS — Production Platform
+# Instaura IMS — Modern Production Platform
 
-> **Full-Stack Internal Management System** — Node.js + Express + MongoDB Atlas + Next.js
+> **The Ultimate Internal Management System** — Node.js + Next.js + MongoDB Atlas + Multi-AI (Gemini/Groq/OpenAI) + Dual Storage (Cloudinary/Google Drive)
+
+## ✨ Premium Features
+
+- **🚀 Two-Step Intelligent Setup**: First-time installation features a dynamic database connection wizard and secure Admin initialization.
+- **🤖 Multi-AI Core**: Built-in support for Google Gemini, OpenAI, and Groq with real-time AI context-aware insights.
+- **📦 Advanced Inventory**: Automated low-stock alerts and transaction history tracking.
+- **☁️ Dual Storage Strategy**: Switch seamlessly between Cloudinary and Google Drive with local storage fallbacks.
+- **📧 Dynamic Email Engine**: Automated welcome, project assignment, and salary generation emails with fully configurable SMTP/Resend.
+- **📊 Real-time Dashboard**: Live status tracking and weekly growth analytics.
+- **📖 Integrated Help Center**: Complete interactive documentation and system guides built directly into the dashboard.
+- **🧹 Bulk Data Management**: Advanced administrative tools for full system reset or date-range data purging.
 
 ## 🏗️ Project Structure
 
 ```
 ims-platform/
 ├── backend/          ← Node.js + Express + MongoDB Atlas
-│   ├── server.js     ← Main entry point
 │   ├── src/
-│   │   ├── config/   ← DB, Redis, Cloudinary, Resend, Sentry
-│   │   ├── models/   ← 12 Mongoose schemas
-│   │   ├── middleware/ ← Auth, RBAC, Error, Upload, Audit
-│   │   ├── routes/   ← 15 API route files
-│   │   ├── controllers/ ← 13 controller files
-│   │   ├── services/ ← Email, Queue (BullMQ)
-│   │   ├── sockets/  ← Socket.IO real-time server
-│   │   └── utils/    ← Seed script, date helpers
-│   ├── .env.example
-│   └── render.yaml   ← Render deployment config
+│   │   ├── config/   ← DB, Redis, Cloudinary, Drive, Resend, Sentry
+│   │   ├── models/   ← 14+ Mongoose schemas (includes CompanyConfig, AuditLogs)
+│   │   ├── routes/   ← 30+ API route sections
+│   │   └── services/ ← AI, Email, Google Drive, File Storage
+│   └── render.yaml   ← Render deployment configuration
 │
-└── frontend/         ← Next.js 14 + Tailwind CSS
+└── frontend/         ← Next.js 14 (App Router) + Tailwind CSS
     ├── app/
-    │   ├── login/    ← Login page (glassmorphism + MFA)
-    │   ├── dashboard/ ← Role-filtered dashboard + all pages
-    │   └── globals.css ← Tailwind design system
-    ├── lib/
-    │   ├── auth-context.tsx ← JWT + MFA auth state
-    │   └── api.ts    ← Axios with auto-refresh interceptor
-    └── .env.example
+    │   ├── signup/   ← Dynamic DB Setup + Admin Creation
+    │   ├── dashboard/ ← Multi-role interface + Help Center
+    │   └── login/    ← Glassmorphism Auth
+    └── lib/
+        ├── auth-context.tsx ← RBAC & JWT State
+        └── settings-context.tsx ← White-label & System Config
 ```
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Production Mode)
 
-### Backend
+The system is now **Setup-Ready**. You don't need to manually configure the `.env` for the database.
+
+### 1. Backend Start
 ```bash
 cd ims-platform/backend
-cp .env.example .env        # Fill in your credentials
 npm install
-npm run seed                # Create admin + demo users
 npm run dev                 # Start on :5000
 ```
 
-### Frontend
+### 2. Frontend Launch
 ```bash
 cd ims-platform/frontend
-cp .env.example .env.local  # Set NEXT_PUBLIC_API_URL
 npm install
 npm run dev                 # Start on :3000
 ```
 
-## 🔐 Default Login Credentials
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin3641@instaura.live | Instaura364133 |
-| HR | hr@instaura.live | HRInstaura@2024 |
-| Employee | employee@instaura.live | Employee@2024 |
+### 3. Initialize System
+1. Open `http://localhost:3000/signup`.
+2. Enter your **MongoDB Atlas** credentials (Username, Password, Cluster URL).
+3. Once connected, create your **Primary Admin** account.
+4. Log in and access the full system!
 
-## 📡 API Endpoints
-| Route | Description |
-|-------|-------------|
-| `/api/auth` | Login, register, logout, MFA, token refresh |
-| `/api/users` | User CRUD + photo upload |
-| `/api/projects` | Project CRUD + member management |
-| `/api/tasks` | Task CRUD with role filtering |
-| `/api/clients` | Client CRUD |
-| `/api/attendance` | Mark/view attendance + monthly report |
-| `/api/hrms` | HR dashboard, attendance/salary reports |
-| `/api/salary` | Payroll generation + approval |
-| `/api/chat` | Chat rooms + messages |
-| `/api/notifications` | Notifications with unread count |
-| `/api/files` | File upload/download via Cloudinary |
-| `/api/goals` | Goal tracking |
-| `/api/jobs` | Recruitment + applications |
-| `/api/webhooks` | n8n automation webhooks |
-| `/health` | Server + DB health check |
+## 🔐 Default Role Structure
+- **Admin**: Full system control, AI/Storage config, Data management.
+- **HR**: Recruitment, Payroll approval, Attendance reports.
+- **Manager**: Project oversight and task management.
+- **Employee**: Attendance, Tasks, and personal Payroll Slips.
+- **Client**: Project tracking and document viewing.
 
 ## 🌐 Deployment
-- **Backend**: Deploy `ims-platform/backend/` to [Render](https://render.com) using `render.yaml`
-- **Frontend**: Deploy `ims-platform/frontend/` to [Vercel](https://vercel.com)
+- **Backend**: Use `render.yaml` for one-click deployment to [Render](https://render.com).
+- **Frontend**: Connect your GitHub repository to [Vercel](https://vercel.com).
 
-### Required Environment Variables (Backend)
-```
-MONGO_URI=mongodb+srv://...
-JWT_SECRET=...
-JWT_REFRESH_SECRET=...
-CLOUDINARY_*=...
-REDIS_URL=redis://...
-RESEND_API_KEY=...
-SENTRY_DSN=...
-CLIENT_URL=https://your-frontend.vercel.app
-```
+---
+© 2026 Instaura. All Rights Reserved.
