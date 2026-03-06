@@ -8,6 +8,8 @@ const qrcode = require('qrcode');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Settings = require('../models/Settings');
+const BillingService = require('../services/billing.service');
+const EmailService = require('../services/email.service');
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 exports.register = async (req, res, next) => {
@@ -92,6 +94,18 @@ exports.register = async (req, res, next) => {
                     isRead: false,
                     createdAt: notification.createdAt
                 });
+            }
+        }
+
+        // ── Trial subscription + welcome email for first admin ──────────────
+        if (!adminExists && safeRoles.includes('admin')) {
+            try {
+                const PlatformSettings = require('../models/superadmin/PlatformSettings');
+                const ps = await PlatformSettings.getInstance();
+                const trialResult = await BillingService.createTrialSubscription();
+                await EmailService.sendTrialStartedEmail(user.email, user.name, trialResult.trialDays || ps.trialDays || 14);
+            } catch (billingErr) {
+                console.error('[Auth] Trial creation error (non-fatal):', billingErr.message);
             }
         }
 

@@ -10,8 +10,9 @@ import {
     LayoutDashboard, FolderKanban, CheckSquare, Users, Building2,
     Calendar, MessageSquare, BarChart3, Briefcase, Target, Star,
     Settings, LogOut, Loader2, ChevronDown, DollarSign, FileText, BookOpen, Sparkles,
-    CalendarDays, Clock, Receipt, FilePlus2, HelpCircle, Monitor, Globe
+    CalendarDays, Clock, Receipt, FilePlus2, HelpCircle, Monitor, Globe, LifeBuoy, CreditCard
 } from 'lucide-react';
+import TrialBanner from '../../components/TrialBanner';
 import clsx from 'clsx';
 import NotificationsPanel from '../../components/NotificationsPanel';
 
@@ -40,6 +41,8 @@ const navigation = [
     { name: 'Emails', href: '/dashboard/emails', icon: MessageSquare, roles: ['admin', 'hr'] },
     { name: 'Documentation', href: '/dashboard/docs', icon: HelpCircle, roles: ['admin', 'manager', 'hr', 'employee', 'client'] },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings, roles: ['admin', 'manager', 'hr'] },
+    { name: 'Billing', href: '/dashboard/billing', icon: CreditCard, roles: ['admin'] },
+    { name: 'Support', href: '/dashboard/support', icon: LifeBuoy, roles: ['admin'] },
 ];
 
 function Sidebar() {
@@ -157,6 +160,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                     </div>
                 </header>
 
+                <TrialBanner />
                 <div className="flex-1 p-6 page-enter">
                     {children}
                 </div>

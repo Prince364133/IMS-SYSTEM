@@ -39,6 +39,10 @@ const healthRoutes = require('./src/routes/health.routes');
 const aiRoutes = require('./src/routes/ai.routes');
 const settingsRoutes = require('./src/routes/settings.routes');
 const leaveRoutes = require('./src/routes/leave.routes');
+const superAdminRoutes = require('./src/routes/superadmin.routes');
+const supportRoutes = require('./src/routes/support.routes');
+const billingRoutes = require('./src/routes/billing.routes');
+const SubscriptionCronService = require('./src/services/subscriptionCron.service');
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
@@ -123,6 +127,15 @@ app.use('/api/assets', require('./src/routes/asset.routes'));
 app.use('/api/company-config', require('./src/routes/company-config.routes'));
 app.use('/api/setup', require('./src/routes/setup.routes'));
 
+// ─── Super Admin (isolated) ────────────────────────────────────────────────────
+app.use('/api/superadmin', superAdminRoutes);
+
+// ─── Company-side Support Tickets ─────────────────────────────────────────────
+app.use('/api/support/tickets', supportRoutes);
+
+// ─── Billing & Subscription ────────────────────────────────────────────────────
+app.use('/api/billing', billingRoutes);
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
     res.json({
@@ -153,6 +166,7 @@ async function bootstrap() {
         initSocket(server);
         await initQueues();
         CronService.init(); // Initialize Scheduled Tasks
+        SubscriptionCronService.start(); // Subscription expiry + reminder emails
         server.listen(PORT, () => {
             console.log(`\n🚀 IMS API running on port ${PORT}`);
             console.log(`📡 Environment: ${process.env.NODE_ENV}`);

@@ -451,5 +451,94 @@ module.exports = {
     sendDocumentWithAttachment: async (to, name, documentName, message, attachment) => {
         const { subject, html } = await buildTemplate('document_attachment', { name, documentName, message });
         return send({ to, subject, html, templateName: 'document_attachment', templateData: { name, documentName, message }, attachments: [attachment] });
-    }
+    },
+
+    // ── Billing / Subscription Emails ────────────────────────────────────────
+    sendTrialStartedEmail: async (to, adminName, trialDays) => {
+        const company = await getCompanyInfo();
+        const loginUrl = process.env.CLIENT_URL || 'https://instaura.live';
+        const upgradeUrl = `${loginUrl}/dashboard/billing`;
+        const subject = `🎉 Your ${trialDays}-day Instaura IMS Trial Has Started!`;
+        const content = `
+            <h2>Welcome, ${adminName}! 🎊</h2>
+            <p>Your <strong>${trialDays}-day free trial</strong> of Instaura IMS has started. You now have full access to all features.</p>
+            <div class="box"><p>Trial period<strong>${trialDays} days — No credit card required</strong></p></div>
+            <p>During your trial you can explore all modules: Projects, HR, Attendance, Invoices, AI Assistant, and more.</p>
+            <a href="${loginUrl}" class="button">Login to Dashboard →</a>
+            <p style="margin-top:24px;font-size:13px;color:#9ca3af;">When your trial ends, upgrade from your <a href="${upgradeUrl}">Billing page</a> to keep access.</p>
+        `;
+        const html = baseLayout(subject, content, company);
+        return send({ to, subject, html, templateName: 'trial_started' });
+    },
+
+    sendTrialReminderEmail: async (to, adminName, daysLeft) => {
+        const company = await getCompanyInfo();
+        const upgradeUrl = `${process.env.CLIENT_URL || 'https://instaura.live'}/dashboard/billing`;
+        const subject = `⚠️ Your trial expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — Action required`;
+        const alertColor = daysLeft <= 2 ? '#fee2e2' : '#fef3c7';
+        const alertBorder = daysLeft <= 2 ? '#fca5a5' : '#fde68a';
+        const alertText = daysLeft <= 2 ? '#991b1b' : '#92400e';
+        const content = `
+            <h2>Your trial is ending soon</h2>
+            <div style="background:${alertColor};border:1px solid ${alertBorder};color:${alertText};padding:14px 18px;border-radius:10px;margin:16px 0;font-size:13px;">
+                ⏰ Your trial expires in <strong>${daysLeft} day${daysLeft !== 1 ? 's' : ''}</strong>
+            </div>
+            <p>Hi ${adminName}, your free trial will expire soon. After expiry, access to all features will be restricted.</p>
+            <a href="${upgradeUrl}" class="button">Upgrade My Plan →</a>
+        `;
+        const html = baseLayout(subject, content, company);
+        return send({ to, subject, html, templateName: 'trial_reminder' });
+    },
+
+    sendTrialExpiredEmail: async (to, adminName) => {
+        const company = await getCompanyInfo();
+        const upgradeUrl = `${process.env.CLIENT_URL || 'https://instaura.live'}/dashboard/billing`;
+        const subject = '🔴 Your Instaura IMS trial has expired';
+        const content = `
+            <h2>Your trial has expired</h2>
+            <div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:14px 18px;border-radius:10px;margin:16px 0;font-size:13px;">❌ Your access to IMS features is now restricted.</div>
+            <p>Hi ${adminName}, your trial period has ended. Upgrade to a subscription plan to restore full access.</p>
+            <a href="${upgradeUrl}" class="button">Upgrade Now →</a>
+            <p style="font-size:13px;color:#9ca3af;margin-top:20px;">Your data is safe and retained for 30 days from trial expiry.</p>
+        `;
+        const html = baseLayout(subject, content, company);
+        return send({ to, subject, html, templateName: 'trial_expired' });
+    },
+
+    sendSubscriptionConfirmationEmail: async (to, adminName, planName, amount, expiryDate) => {
+        const company = await getCompanyInfo();
+        const loginUrl = process.env.CLIENT_URL || 'https://instaura.live';
+        const subject = `✅ Payment confirmed — ${planName} Plan activated`;
+        const expiry = new Date(expiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+        const content = `
+            <h2>Payment Successful!</h2>
+            <div class="box"><p>Plan<strong>${planName}</strong></p></div>
+            <div class="box"><p>Amount Paid<strong>₹${Number(amount).toLocaleString('en-IN')}</strong></p></div>
+            <div class="box"><p>Valid Until<strong>${expiry}</strong></p></div>
+            <p style="font-size:12px;color:#9ca3af;background:#fef9ec;padding:12px 16px;border-radius:8px;border:1px solid #fde68a;margin-top:16px;">⚠️ All subscription payments are <strong>non-refundable</strong>.</p>
+            <a href="${loginUrl}" class="button">Go to Dashboard →</a>
+        `;
+        const html = baseLayout(subject, content, company);
+        return send({ to, subject, html, templateName: 'subscription_confirmation' });
+    },
+
+    sendRenewalReminderEmail: async (to, adminName, planName, daysLeft, renewalDate) => {
+        const company = await getCompanyInfo();
+        const upgradeUrl = `${process.env.CLIENT_URL || 'https://instaura.live'}/dashboard/billing`;
+        const subject = `⏰ Your ${planName} subscription expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
+        const expiry = new Date(renewalDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+        const alertColor = daysLeft <= 2 ? '#fee2e2' : '#fef3c7';
+        const alertBorder = daysLeft <= 2 ? '#fca5a5' : '#fde68a';
+        const alertText = daysLeft <= 2 ? '#991b1b' : '#92400e';
+        const content = `
+            <h2>Subscription expiring soon</h2>
+            <div style="background:${alertColor};border:1px solid ${alertBorder};color:${alertText};padding:14px 18px;border-radius:10px;margin:16px 0;font-size:13px;">
+                Your <strong>${planName}</strong> plan expires in <strong>${daysLeft} day${daysLeft !== 1 ? 's' : ''}</strong> (${expiry})
+            </div>
+            <p>Hi ${adminName}, renew now to avoid interruption.</p>
+            <a href="${upgradeUrl}" class="button">Renew Subscription →</a>
+        `;
+        const html = baseLayout(subject, content, company);
+        return send({ to, subject, html, templateName: 'renewal_reminder' });
+    },
 };

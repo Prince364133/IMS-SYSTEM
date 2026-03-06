@@ -40,3 +40,9 @@ services:
         value: admin3641@instaura.live
       - key: ADMIN_PASSWORD
         sync: false
+      - key: SUPER_ADMIN_JWT_SECRET
+        sync: false
+      - key: SUPER_ADMIN_JWT_EXPIRES_IN
+        value: 7d
+      - key: ENCRYPTION_KEY
+        sync: false
