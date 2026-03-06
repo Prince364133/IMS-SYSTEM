@@ -11,6 +11,7 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../lib/auth-context';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isToday, isSameDay, parseISO } from 'date-fns';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 const EVENT_TYPES = [
     { key: 'holiday', label: 'Holiday', color: '#ef4444' },
@@ -22,12 +23,12 @@ const EVENT_TYPES = [
 ];
 
 const PLATFORMS = [
-    { key: 'google_meet', label: 'Google Meet', icon: '🟢', placeholder: 'https://meet.google.com/...' },
-    { key: 'zoom', label: 'Zoom', icon: '🔵', placeholder: 'https://zoom.us/j/...' },
-    { key: 'teams', label: 'Microsoft Teams', icon: '🟣', placeholder: 'https://teams.microsoft.com/...' },
-    { key: 'in_person', label: 'In Person', icon: '🏢', placeholder: '' },
-    { key: 'phone', label: 'Phone Call', icon: '📞', placeholder: '' },
-    { key: 'other', label: 'Other', icon: '📅', placeholder: '' },
+    { key: 'google_meet', label: 'Google Meet', icon: <Video className="w-3.5 h-3.5 text-emerald-500" />, placeholder: 'https://meet.google.com/...' },
+    { key: 'zoom', label: 'Zoom', icon: <Video className="w-3.5 h-3.5 text-blue-500" />, placeholder: 'https://zoom.us/j/...' },
+    { key: 'teams', label: 'Microsoft Teams', icon: <Video className="w-3.5 h-3.5 text-purple-500" />, placeholder: 'https://teams.microsoft.com/...' },
+    { key: 'in_person', label: 'In Person', icon: <MapPin className="w-3.5 h-3.5 text-amber-500" />, placeholder: '' },
+    { key: 'phone', label: 'Phone Call', icon: <Phone className="w-3.5 h-3.5 text-indigo-500" />, placeholder: '' },
+    { key: 'other', label: 'Other', icon: <Calendar className="w-3.5 h-3.5 text-gray-500" />, placeholder: '' },
 ];
 
 function getEventColor(type: string) {
@@ -125,7 +126,7 @@ function AddEventModal({ date, onClose, onSuccess }: { date: Date; onClose: () =
             }
 
             await api.post('/api/calendar', payload);
-            toast.success(isMeeting ? '✅ Meeting created! Invite emails sent to all attendees.' : 'Event created!');
+            toast.success(isMeeting ? 'Meeting created! Invite emails sent to all attendees.' : 'Event created!');
             onSuccess();
             onClose();
         } catch (err: any) {
@@ -393,6 +394,8 @@ export default function CalendarPage() {
     // Default to today so events display immediately
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const [resendingId, setResendingId] = useState<string | null>(null);
     const isAdmin = user?.role === 'admin';
 
@@ -412,13 +415,19 @@ export default function CalendarPage() {
     function prevMonth() { setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)); }
     function nextMonth() { setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)); }
 
-    async function deleteEvent(id: string) {
-        if (!confirm('Delete this event?')) return;
+    async function handleDeleteEvent() {
+        if (!showDeleteConfirm) return;
+        setDeleting(true);
         try {
-            await api.delete(`/api/calendar/${id}`);
+            await api.delete(`/api/calendar/${showDeleteConfirm}`);
             toast.success('Event deleted');
-            setEvents(prev => prev.filter(e => e._id !== id));
-        } catch { toast.error('Failed to delete'); }
+            setEvents(prev => prev.filter(e => e._id !== showDeleteConfirm));
+        } catch {
+            toast.error('Failed to delete');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(null);
+        }
     }
 
     async function resendInvite(id: string) {
@@ -650,7 +659,7 @@ export default function CalendarPage() {
                                                         {resendingId === ev._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                                                     </button>
                                                 )}
-                                                <button onClick={() => deleteEvent(ev._id)} className="p-1.5 hover:bg-red-50 rounded text-red-300 hover:text-red-500">
+                                                <button onClick={() => setShowDeleteConfirm(ev._id)} className="p-1.5 hover:bg-red-50 rounded text-red-300 hover:text-red-500">
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             </div>

@@ -60,7 +60,9 @@ export default function CompanyTab() {
                 ifscCode: company.ifscCode || '',
                 authorizedSignatory: company.authorizedSignatory || '',
                 designation: company.designation || '',
-                signatureImage: company.signatureImage || ''
+                signatureImage: company.signatureImage || '',
+                salaryReleaseDate: company.salaryReleaseDate || 1,
+                workingDaysPerMonth: company.workingDaysPerMonth || 22
             });
         }
     }, [company]);
@@ -225,6 +227,21 @@ export default function CompanyTab() {
                         <div className="space-y-1.5">
                             <label className="label">IFSC / Swift Code</label>
                             <input name="ifscCode" value={formData.ifscCode} onChange={handleChange} className="input" />
+                        </div>
+                    </div>
+
+                    {/* Payroll Settings */}
+                    <SectionHeader icon={Landmark} title="Payroll Settings" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <div className="space-y-1.5">
+                            <label className="label">Salary Release Date (1-28)</label>
+                            <input type="number" min="1" max="28" name="salaryReleaseDate" value={formData.salaryReleaseDate} onChange={handleChange} className="input" placeholder="1" />
+                            <p className="text-[10px] text-gray-400">The day of the month when salaries are typically released.</p>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="label">Working Days Per Month</label>
+                            <input type="number" min="1" max="31" name="workingDaysPerMonth" value={formData.workingDaysPerMonth} onChange={handleChange} className="input" placeholder="22" />
+                            <p className="text-[10px] text-gray-400">Used to calculate daily salary deductions for absences.</p>
                         </div>
                     </div>
 

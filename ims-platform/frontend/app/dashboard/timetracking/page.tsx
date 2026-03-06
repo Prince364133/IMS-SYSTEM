@@ -9,6 +9,7 @@ import {
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { format, formatDuration, intervalToDuration } from 'date-fns';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 function fmtMinutes(mins: number) {
     const h = Math.floor(mins / 60);
@@ -91,6 +92,9 @@ export default function TimeTrackingPage() {
     const [activeDesc, setActiveDesc] = useState('');
     const [running, setRunning] = useState<any>(null);
     const [elapsed, setElapsed] = useState(0);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     function loadLogs() {
@@ -144,13 +148,19 @@ export default function TimeTrackingPage() {
         } catch { toast.error('Failed to stop timer'); }
     }
 
-    async function deleteLog(id: string) {
-        if (!confirm('Delete this time entry?')) return;
+    async function handleDeleteLog() {
+        if (!showDeleteConfirm) return;
+        setDeleting(true);
         try {
-            await api.delete(`/api/timelogs/${id}`);
+            await api.delete(`/api/timelogs/${showDeleteConfirm}`);
             toast.success('Entry deleted');
-            setLogs(prev => prev.filter(l => l._id !== id));
-        } catch { toast.error('Failed to delete'); }
+            setLogs(prev => prev.filter(l => l._id !== showDeleteConfirm));
+        } catch {
+            toast.error('Failed to delete');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(null);
+        }
     }
 
     function formatElapsed(secs: number) {
@@ -195,7 +205,7 @@ export default function TimeTrackingPage() {
                     { label: 'Today', value: fmtMinutes(totalToday), color: 'text-indigo-600' },
                     { label: 'This Week', value: fmtMinutes(totalWeek), color: 'text-blue-600' },
                     { label: 'Entries', value: logs.length, color: 'text-gray-700' },
-                    { label: 'Status', value: running ? '🟢 Running' : '⚫ Idle', color: 'text-gray-700' },
+                    { label: 'Status', value: running ? <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" /> Running</span> : <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Idle</span>, color: 'text-gray-700' },
                 ].map(k => (
                     <div key={k.label} className="card p-4">
                         <p className="text-xs text-gray-400 font-semibold uppercase mb-1">{k.label}</p>
@@ -283,7 +293,7 @@ export default function TimeTrackingPage() {
                                             </span>
                                         </td>
                                         <td>
-                                            <button onClick={() => deleteLog(log._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600">
+                                            <button onClick={() => setShowDeleteConfirm(log._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </td>
@@ -294,6 +304,17 @@ export default function TimeTrackingPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={!!showDeleteConfirm}
+                title="Delete Time Entry"
+                message="Are you sure you want to delete this time entry?"
+                confirmText="Delete"
+                onConfirm={handleDeleteLog}
+                onCancel={() => setShowDeleteConfirm(null)}
+                loading={deleting}
+                variant="danger"
+            />
         </div>
     );
 }

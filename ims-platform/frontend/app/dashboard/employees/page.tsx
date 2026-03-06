@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../../../lib/api';
-import { Users, Search, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Users, Search, Plus, Trash2 } from 'lucide-react';
+import { SkeletonTable } from '../../../components/Skeleton';
 import clsx from 'clsx';
 import Link from 'next/link';
 import { useAuth } from '../../../lib/auth-context';
@@ -93,7 +94,7 @@ export default function EmployeesPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>
+                <SkeletonTable rows={8} columns={6} />
             ) : (
                 <div className="card">
                     <div className="table-wrapper">

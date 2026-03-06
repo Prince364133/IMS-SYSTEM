@@ -61,6 +61,21 @@ function signRefreshToken(userId) {
 }
 
 /**
+ * Authorize roles
+ * @param  {...string} roles
+ */
+function authorize(...roles) {
+    return (req, res, next) => {
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({
+                error: `User role ${req.user?.role || 'unknown'} is not authorized to access this route`
+            });
+        }
+        next();
+    };
+}
+
+/**
  * Require Admin or HR role
  */
 function requireAdminOrHR(req, res, next) {
@@ -70,4 +85,4 @@ function requireAdminOrHR(req, res, next) {
     return res.status(403).json({ error: 'Requires Admin or HR privileges' });
 }
 
-module.exports = { protect, signAccessToken, signRefreshToken, requireAdminOrHR };
+module.exports = { protect, authorize, signAccessToken, signRefreshToken, requireAdminOrHR };

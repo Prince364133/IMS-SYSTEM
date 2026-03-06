@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import api from '../../../lib/api';
-import { CheckSquare, Loader2, Plus, LayoutGrid, List, User } from 'lucide-react';
+import { CheckSquare, Plus, LayoutGrid, List, User } from 'lucide-react';
+import { SkeletonListItem, SkeletonKanbanColumn } from '../../../components/Skeleton';
 import clsx from 'clsx';
 import TaskDetailModal from '../../../components/TaskDetailModal';
 import CreateTaskModal from '../../../components/CreateTaskModal';
@@ -116,7 +117,19 @@ export default function TasksPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>
+                view === 'kanban' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <SkeletonKanbanColumn key={i} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <SkeletonListItem key={i} />
+                        ))}
+                    </div>
+                )
             ) : view === 'kanban' ? (
                 /* ── KANBAN VIEW ── */
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto">

@@ -82,9 +82,13 @@ class AnalyticsService {
 
     /**
      * 7. Net Salary Calculation
+     * Calculates dynamic daily rate and deducts for absences
      */
-    calculateNetSalary(base, absentDays = 0, dailyRate = 0, latePenalty = 0, bonuses = 0) {
-        return (base || 0) - (absentDays * dailyRate) - latePenalty + bonuses;
+    calculateNetSalary(base, totalWorkingDays = 22, absentDays = 0, latePenalty = 0, bonuses = 0, manualDeductions = 0) {
+        const dailyRate = base / Math.max(1, totalWorkingDays);
+        const absenceDeduction = absentDays * dailyRate;
+
+        return Math.max(0, (base || 0) - absenceDeduction - latePenalty - manualDeductions + bonuses);
     }
 
     /**

@@ -6,13 +6,15 @@ import api from '../../../../lib/api';
 import {
     ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase,
     Building2, Hash, CheckSquare, Clock, TrendingUp, Edit2,
-    Loader2, AlertCircle, DollarSign, ShieldCheck, PowerOff, Power
+    Loader2, AlertCircle, DollarSign, ShieldCheck, PowerOff, Power,
+    CheckCircle2, XCircle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { useAuth } from '../../../../lib/auth-context';
 import AddEmployeeModal from '../../../../components/AddEmployeeModal';
+import ConfirmModal from '../../../../components/ConfirmModal';
 import toast from 'react-hot-toast';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -50,6 +52,20 @@ export default function EmployeeProfilePage() {
     const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'salary' | 'attendance'>('overview');
     const [showEdit, setShowEdit] = useState(false);
     const [deactivating, setDeactivating] = useState(false);
+    const [confirmConfig, setConfirmConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        variant: 'danger' | 'warning' | 'info';
+        confirmText?: string;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        variant: 'danger'
+    });
     const { user } = useAuth();
 
     useEffect(() => {
@@ -72,23 +88,48 @@ export default function EmployeeProfilePage() {
     async function handleToggleActive() {
         if (!emp) return;
         const action = emp.isActive !== false ? 'deactivate' : 'activate';
-        if (!confirm(`Are you sure you want to ${action} this employee?`)) return;
-        setDeactivating(true);
-        try {
-            await api.put(`/api/users/${id}`, { isActive: emp.isActive === false });
-            setEmp((prev: any) => ({ ...prev, isActive: prev.isActive === false }));
-            toast.success(`Employee ${action}d successfully`);
-        } catch { toast.error(`Failed to ${action} employee`); }
-        finally { setDeactivating(false); }
+
+        setConfirmConfig({
+            isOpen: true,
+            title: `${action.charAt(0).toUpperCase() + action.slice(1)} Employee`,
+            message: `Are you sure you want to ${action} this employee?`,
+            variant: emp.isActive !== false ? 'warning' : 'info',
+            confirmText: action.charAt(0).toUpperCase() + action.slice(1),
+            onConfirm: async () => {
+                setDeactivating(true);
+                try {
+                    await api.put(`/api/users/${id}`, { isActive: emp.isActive === false });
+                    setEmp((prev: any) => ({ ...prev, isActive: prev.isActive === false }));
+                    toast.success(`Employee ${action}d successfully`);
+                } catch {
+                    toast.error(`Failed to ${action} employee`);
+                } finally {
+                    setDeactivating(false);
+                    setConfirmConfig(p => ({ ...p, isOpen: false }));
+                }
+            }
+        });
     }
 
     async function handleDelete() {
-        if (!confirm('Are you SURE you want to permanently delete this user? This action cannot be undone.')) return;
-        try {
-            await api.delete(`/api/users/${id}`);
-            toast.success('User deleted successfully');
-            router.push('/dashboard/employees');
-        } catch { toast.error('Failed to delete user'); }
+        setConfirmConfig({
+            isOpen: true,
+            title: "Delete User Permanently",
+            message: "Are you SURE you want to permanently delete this user? This action cannot be undone and all associated data will be lost.",
+            variant: 'danger',
+            confirmText: "Delete Permanently",
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/api/users/${id}`);
+                    toast.success('User deleted successfully');
+                    router.push('/dashboard/employees');
+                } catch {
+                    toast.error('Failed to delete user');
+                } finally {
+                    setConfirmConfig(p => ({ ...p, isOpen: false }));
+                }
+            }
+        });
     }
 
     if (loading) {
@@ -308,8 +349,8 @@ export default function EmployeeProfilePage() {
                                 { label: 'Department', v: emp.department || '—' },
                                 { label: 'Position', v: emp.position || '—' },
                                 { label: 'Employee ID', v: emp.employeeId || '—' },
-                                { label: 'MFA Enabled', v: emp.mfaEnabled ? '✅ Yes' : '❌ No' },
-                                { label: 'Account Status', v: emp.isActive !== false ? '🟢 Active' : '🔴 Inactive' },
+                                { label: 'MFA Enabled', v: emp.mfaEnabled ? <span className="flex items-center gap-1 text-emerald-600 font-medium"><CheckCircle2 className="w-4 h-4" /> Yes</span> : <span className="flex items-center gap-1 text-red-500 font-medium"><XCircle className="w-4 h-4" /> No</span> },
+                                { label: 'Account Status', v: emp.isActive !== false ? <span className="flex items-center gap-1 text-emerald-600 font-medium"><CheckCircle2 className="w-4 h-4" /> Active</span> : <span className="flex items-center gap-1 text-red-500 font-medium"><XCircle className="w-4 h-4" /> Inactive</span> },
                             ].map(({ label, v }) => (
                                 <div key={label} className="flex justify-between">
                                     <span className="text-gray-400">{label}</span>
@@ -446,6 +487,17 @@ export default function EmployeeProfilePage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={confirmConfig.isOpen}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                variant={confirmConfig.variant}
+                confirmText={confirmConfig.confirmText}
+                onConfirm={confirmConfig.onConfirm}
+                onCancel={() => setConfirmConfig(p => ({ ...p, isOpen: false }))}
+                loading={deactivating}
+            />
         </div>
     );
 }

@@ -1,3 +1,5 @@
+'use strict';
+
 const nodemailer = require('nodemailer');
 const Settings = require('../models/Settings');
 const CompanyConfig = require('../models/CompanyConfig');
@@ -7,94 +9,94 @@ const EmailLog = require('../models/EmailLog');
  * Get company configuration with defaults
  */
 async function getCompanyInfo() {
-  const config = await CompanyConfig.findOne();
-  if (!config) {
-    return {
-      companyName: 'Internal Management System',
-      tagline: 'Your Organization Hub',
-      brandColor: '#4f46e5',
-      logoUrl: '',
-      websiteUrl: process.env.CLIENT_URL
-    };
-  }
-  return config;
+    const config = await CompanyConfig.findOne();
+    if (!config) {
+        return {
+            companyName: 'Internal Management System',
+            tagline: 'Your Organization Hub',
+            brandColor: '#4f46e5',
+            logoUrl: '',
+            websiteUrl: process.env.CLIENT_URL
+        };
+    }
+    return config;
 }
 
 /**
  * Get dynamic transporter based on database settings
  */
 async function getTransporter() {
-  const settings = await Settings.findOne();
+    const settings = await Settings.findOne();
 
-  if (!settings || !settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
-    console.warn('Email service: SMTP not configured. Emails will not be sent.');
-    return null;
-  }
+    if (!settings || !settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
+        console.warn('Email service: SMTP not configured. Emails will not be sent.');
+        return null;
+    }
 
-  return nodemailer.createTransport({
-    host: settings.smtpHost,
-    port: settings.smtpPort,
-    secure: settings.smtpSecure,
-    auth: {
-      user: settings.smtpUser,
-      pass: settings.smtpPass,
-    },
-  });
+    return nodemailer.createTransport({
+        host: settings.smtpHost,
+        port: settings.smtpPort,
+        secure: settings.smtpSecure,
+        auth: {
+            user: settings.smtpUser,
+            pass: settings.smtpPass,
+        },
+    });
 }
 
 /**
  * Helper to send email using dynamic settings and log the transaction
  */
 async function send(options) {
-  let logId = null;
-  try {
-    const settings = await Settings.findOne();
-    const transporter = await getTransporter();
+    let logId = null;
+    try {
+        const settings = await Settings.findOne();
+        const transporter = await getTransporter();
 
-    // Create initial log entry
-    const log = await EmailLog.create({
-      to: options.to,
-      subject: options.subject,
-      templateName: options.templateName || 'generic',
-      templateData: options.templateData || {},
-      sentBy: options.sentBy || null,
-      status: 'failed', // Default to failed until success
-    });
-    logId = log._id;
+        const log = await EmailLog.create({
+            to: options.to,
+            subject: options.subject,
+            templateName: options.templateName || 'generic',
+            templateData: options.templateData || {},
+            sentBy: options.sentBy || null,
+            status: 'failed',
+        });
+        logId = log._id;
 
-    if (!transporter) {
-      await EmailLog.findByIdAndUpdate(logId, { errorMessage: 'SMTP not configured' });
-      return { success: false, error: 'SMTP not configured' };
+        if (!transporter) {
+            await EmailLog.findByIdAndUpdate(logId, { errorMessage: 'SMTP not configured' });
+            return { success: false, error: 'SMTP not configured' };
+        }
+
+        const info = await transporter.sendMail({
+            from: settings.emailFrom || options.from || 'noreply@internal.system',
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+            attachments: options.attachments || [],
+        });
+
+        console.log('Email sent:', info.messageId);
+        await EmailLog.findByIdAndUpdate(logId, { status: 'sent' });
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Email send error:', error);
+        if (logId) {
+            await EmailLog.findByIdAndUpdate(logId, { status: 'failed', errorMessage: error.message });
+        }
+        return { success: false, error: error.message };
     }
-
-    const info = await transporter.sendMail({
-      from: settings.emailFrom || options.from || 'noreply@internal.system',
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    });
-
-    console.log('Email sent:', info.messageId);
-    await EmailLog.findByIdAndUpdate(logId, { status: 'sent' });
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Email send error:', error);
-    if (logId) {
-      await EmailLog.findByIdAndUpdate(logId, { status: 'failed', errorMessage: error.message });
-    }
-    return { success: false, error: error.message };
-  }
 }
 
-// ── Email templates ────────────────────────────────────────────────────────────
+// ── Email templates HTML constructor ────────────────────────────────────────────────────────────
 
 function baseLayout(title, content, company) {
-  const brandColor = company.brandColor || '#cf1d29';
-  const logoHtml = company.emailLogo || company.companyLogo
-    ? `<img src="${company.emailLogo || company.companyLogo}" alt="${company.companyName}" style="max-height: 50px; margin-bottom: 10px;">`
-    : `<h1>${company.companyName}</h1>`;
+    const brandColor = company.brandColor || '#cf1d29';
+    const logoHtml = company.emailLogo || company.companyLogo
+        ? `<img src="${company.emailLogo || company.companyLogo}" alt="${company.companyName}" style="max-height: 50px; margin-bottom: 10px;">`
+        : `<h1>${company.companyName}</h1>`;
 
-  return `
+    return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -110,6 +112,9 @@ function baseLayout(title, content, company) {
     .body p { color: #4b5563; line-height: 1.7; margin: 0 0 16px; }
     .button { display: inline-block; background: ${brandColor}; color: white !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin: 16px 0; }
     .badge { display: inline-block; background: #fff5f5; color: ${brandColor}; border: 1px solid #feb2b2; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .box { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb; }
+    .box p { margin: 0; font-size: 13px; color: #64748b; }
+    .box p strong { display: block; margin-top: 4px; font-size: 15px; font-weight: 600; color: #1a1a2e; }
     .footer { background: #f8fafc; padding: 20px 32px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; }
   </style>
 </head>
@@ -129,195 +134,322 @@ function baseLayout(title, content, company) {
 </html>`;
 }
 
-/**
- * Send account verification email
- */
-async function sendVerificationEmail(to, name, verificationUrl) {
-  const company = await getCompanyInfo();
-  const html = baseLayout('Verify Your Email', `
-    <h2>Welcome to ${company.companyName}, ${name}! 👋</h2>
-    <p>Your account has been created. Please verify your email address to get started.</p>
-    <a href="${verificationUrl}" class="button">Verify Email Address</a>
-    <p style="margin-top:24px;font-size:13px;color:#9ca3af;">If you didn't create this account, you can safely ignore this email.</p>
-  `, company);
-  return send({
-    to,
-    subject: `Welcome to ${company.companyName} — Verify Your Email`,
-    html,
-    templateName: 'verification',
-    templateData: { name, verificationUrl }
-  });
+async function buildTemplate(templateId, data) {
+    const company = await getCompanyInfo();
+    let subject = '';
+    let content = '';
+
+    switch (templateId) {
+        case 'welcome':
+            subject = `Welcome to ${company.companyName} — Your Account is Ready`;
+            content = `
+                <h2>Welcome aboard, ${data.name}! 🚀</h2>
+                <p>Your account has been created successfully. You can now log in to the ${company.companyName} system using the credentials below:</p>
+                <div class="box">
+                    <p>Email Address<strong>${data.email}</strong></p>
+                    <p style="margin-top: 12px;">Temporary Password<strong>${data.password}</strong></p>
+                </div>
+                <a href="${process.env.CLIENT_URL || company.websiteUrl}" class="button">Log In to Dashboard</a>
+                <p style="margin-top:24px;font-size:13px;color:#9ca3af;">We recommend changing your password after your first login.</p>
+            `;
+            break;
+        case 'project_assigned':
+            subject = `${company.companyName} — Project Assigned: ${data.projectName}`;
+            content = `
+                <h2>You've been assigned to a project</h2>
+                <p>Hi ${data.name},</p>
+                <p>You have been added as a member of the following project:</p>
+                <p><span class="badge">${data.projectName}</span></p>
+                <a href="${data.projectUrl}" class="button">View Project</a>
+            `;
+            break;
+        case 'task_assigned':
+            subject = `${company.companyName} — Task Assigned: ${data.taskTitle}`;
+            content = `
+                <h2>New Task Assignment</h2>
+                <p>Hi ${data.name},</p>
+                <p>You have been assigned a new task on <strong>${data.projectName}</strong>.</p>
+                <div class="box">
+                    <p>Task Title<strong>${data.taskTitle}</strong></p>
+                </div>
+                <a href="${data.taskUrl}" class="button">View Task</a>
+            `;
+            break;
+        case 'salary_generated':
+            subject = `${company.companyName} — Salary for ${data.month}`;
+            content = `
+                <h2>Your salary has been generated</h2>
+                <p>Hi ${data.name},</p>
+                <p>Your salary for <strong>${data.month}</strong> has been processed:</p>
+                <p style="font-size:32px;font-weight:700;color:${company.brandColor || '#4f46e5'};margin:16px 0;">₹${Number(data.netSalary).toLocaleString()}</p>
+                <a href="${process.env.CLIENT_URL}/dashboard/hr" class="button">View Salary Details</a>
+            `;
+            break;
+        case 'system_alert':
+            subject = `${company.companyName} — ${data.subject}`;
+            content = `
+                <h2>System Alert</h2>
+                <p>${data.message}</p>
+            `;
+            break;
+        case 'verification':
+            subject = `Welcome to ${company.companyName} — Verify Your Email`;
+            content = `
+                <h2>Welcome to ${company.companyName}, ${data.name}! 👋</h2>
+                <p>Your account has been created. Please verify your email address to get started.</p>
+                <a href="${data.verificationUrl}" class="button">Verify Email Address</a>
+                <p style="margin-top:24px;font-size:13px;color:#9ca3af;">If you didn't create this account, you can safely ignore this email.</p>
+            `;
+            break;
+        case 'password_reset':
+            subject = `${company.companyName} — Password Reset`;
+            content = `
+                <h2>Password Reset Request</h2>
+                <p>Hi ${data.name},</p>
+                <p>We received a request to reset your password. Click the button below to create a new password.</p>
+                <a href="${data.resetUrl}" class="button">Reset Password</a>
+                <p style="margin-top:24px;font-size:13px;color:#9ca3af;">This link expires in 1 hour. If you didn't request a password reset, please ignore this email.</p>
+            `;
+            break;
+        case 'document_tagged':
+            subject = `${company.companyName} — Document Shared: ${data.documentName}`;
+            content = `
+                <h2>You've been tagged in a document</h2>
+                <p>Hi ${data.name},</p>
+                <p><strong>${data.senderName}</strong> has tagged you in a new document:</p>
+                <div class="box">
+                    <p>Document Title<strong>${data.documentName}</strong></p>
+                </div>
+                <a href="${data.documentUrl}" class="button">View Document</a>
+            `;
+            break;
+
+        // --- NEW TEMPLATES ---
+
+        case 'meeting_scheduled':
+            subject = `${company.companyName} — Meeting: ${data.meetingTitle}`;
+            content = `
+                <h2>Meeting Invitation</h2>
+                <p>Hi ${data.name},</p>
+                <p>You have a meeting scheduled for <strong>${new Date(data.startTime).toLocaleString()}</strong>.</p>
+                <div class="box">
+                    <p>Meeting Title<strong>${data.meetingTitle}</strong></p>
+                </div>
+                <a href="${data.ctaUrl}" class="button">Join/View Meeting</a>
+            `;
+            break;
+        case 'leave_approved':
+            subject = `${company.companyName} — Leave Request Approved`;
+            content = `
+                <h2>Leave Request Approved</h2>
+                <p>Hi ${data.name},</p>
+                <p>Your request for <strong>${data.leaveType}</strong> has been approved.</p>
+                <div class="box">
+                    <p>Duration<strong>${data.startDate} to ${data.endDate}</strong></p>
+                </div>
+                <p>Enjoy your time off!</p>
+            `;
+            break;
+        case 'leave_rejected':
+            subject = `${company.companyName} — Leave Request Update`;
+            content = `
+                <h2>Leave Request Update</h2>
+                <p>Hi ${data.name},</p>
+                <p>Unfortunately, your request for <strong>${data.leaveType}</strong> has not been approved at this time.</p>
+                <div class="box">
+                    <p>Reason provided<strong>${data.reason}</strong></p>
+                </div>
+                <p>Please contact HR or your manager for further details.</p>
+            `;
+            break;
+        case 'task_completed':
+            subject = `${company.companyName} — Task Completed: ${data.taskTitle}`;
+            content = `
+                <h2>Task Completed</h2>
+                <p>Hi ${data.name},</p>
+                <p>A task related to <strong>${data.projectName}</strong> has just been marked as completed.</p>
+                <div class="box">
+                    <p>Task Title<strong>${data.taskTitle}</strong></p>
+                </div>
+                <a href="${data.ctaUrl}" class="button">View Details</a>
+            `;
+            break;
+        case 'invoice_generated':
+            subject = `${company.companyName} — Invoice #${data.invoiceNumber}`;
+            content = `
+                <h2>Invoice Available</h2>
+                <p>Hi ${data.clientName},</p>
+                <p>A new invoice has been generated for your account.</p>
+                <div class="box">
+                    <p>Invoice Number<strong>${data.invoiceNumber}</strong></p>
+                    <p style="margin-top: 12px;">Amount Due<strong>$${data.amount}</strong></p>
+                    <p style="margin-top: 12px;">Due Date<strong>${data.dueDate}</strong></p>
+                </div>
+                <a href="${data.ctaUrl}" class="button">View & Pay Invoice</a>
+            `;
+            break;
+        case 'payment_received':
+            subject = `${company.companyName} — Payment Received for #${data.invoiceNumber}`;
+            content = `
+                <h2>Payment Received</h2>
+                <p>Hi ${data.clientName},</p>
+                <p>We have successfully received your payment of <strong>$${data.amount}</strong> on ${data.date}.</p>
+                <p>Thank you for your prompt payment.</p>
+            `;
+            break;
+        case 'performance_review':
+            subject = `${company.companyName} — Performance Review Scheduled`;
+            content = `
+                <h2>Performance Review Scheduled</h2>
+                <p>Hi ${data.name},</p>
+                <p>Your upcoming performance review has been scheduled with <strong>${data.reviewerName}</strong>.</p>
+                <div class="box">
+                    <p>Date & Time<strong>${data.reviewDate}</strong></p>
+                </div>
+                <a href="${data.ctaUrl}" class="button">View Review Details</a>
+            `;
+            break;
+        case 'document_shared':
+            subject = `${company.companyName} — Document Shared: ${data.documentName}`;
+            content = `
+                <h2>A document was shared with you</h2>
+                <p>Hi ${data.name},</p>
+                <p><strong>${data.senderName}</strong> has securely shared a document with you.</p>
+                <div class="box">
+                    <p>Document Name<strong>${data.documentName}</strong></p>
+                </div>
+                <a href="${data.ctaUrl}" class="button">Access Document</a>
+            `;
+            break;
+        case 'client_welcome':
+            subject = `Welcome to the ${company.companyName} Portal`;
+            content = `
+                <h2>Welcome, ${data.clientName}!</h2>
+                <p>We are thrilled to partner with you. Your client portal has been set up securely.</p>
+                <p>You can track projects, invoices, and documents directly from your dashboard.</p>
+                <a href="${data.loginUrl}" class="button">Access Client Portal</a>
+            `;
+            break;
+        case 'project_completed':
+            subject = `${company.companyName} — Project Completed: ${data.projectName}`;
+            content = `
+                <h2>Project Completed 🎉</h2>
+                <p>Hi ${data.name},</p>
+                <p>Congratulations! The project <strong>${data.projectName}</strong> was successfully completed on ${data.completionDate}.</p>
+                <p>Thank you for your hard work and collaboration.</p>
+                <a href="${data.ctaUrl}" class="button">View Final Project Report</a>
+            `;
+            break;
+        case 'expense_approved':
+            subject = `${company.companyName} — Expense Approved`;
+            content = `
+                <h2>Expense Approved</h2>
+                <p>Hi ${data.name},</p>
+                <p>Your business expense has been formally approved and will be reimbursed in the next cycle.</p>
+                <div class="box">
+                    <p>Expense Item<strong>${data.expenseTitle}</strong></p>
+                    <p style="margin-top: 12px;">Amount<strong>${data.amount}</strong></p>
+                    <p style="margin-top: 12px;">Submitted On<strong>${data.date}</strong></p>
+                </div>
+            `;
+            break;
+        case 'expense_rejected':
+            subject = `${company.companyName} — Expense Rejected`;
+            content = `
+                <h2>Expense Update</h2>
+                <p>Hi ${data.name},</p>
+                <p>Your recent expense submission could not be approved at this time.</p>
+                <div class="box">
+                    <p>Expense Item<strong>${data.expenseTitle}</strong></p>
+                    <p style="margin-top: 12px;">Amount<strong>${data.amount}</strong></p>
+                    <p style="margin-top: 12px;">Reason provided<strong>${data.reason}</strong></p>
+                </div>
+                <p>Please reach out to the finance team if you need further clarification.</p>
+            `;
+            break;
+        case 'contract_renewal':
+            subject = `${company.companyName} — Contract Renewal Reminder`;
+            content = `
+                <h2>Contract Renewal Notice</h2>
+                <p>Hi ${data.clientName},</p>
+                <p>This is a reminder that the contract <strong>${data.contractName}</strong> is up for renewal on <strong>${data.renewalDate}</strong>.</p>
+                <a href="${data.ctaUrl}" class="button">Review Contract</a>
+            `;
+            break;
+        case 'holiday_announcement':
+            subject = `${company.companyName} — Upcoming Holiday: ${data.holidayName}`;
+            content = `
+                <h2>Holiday Announcement</h2>
+                <p>Please note that ${company.companyName} will be observing <strong>${data.holidayName}</strong> on <strong>${data.date}</strong>.</p>
+                <p>${data.message}</p>
+                <p>Please plan your deliverables accordingly and update your out-of-office response if necessary.</p>
+            `;
+            break;
+        case 'probation_completed':
+            subject = `${company.companyName} — Probation Period Completed`;
+            content = `
+                <h2>Congratulations! 🎉</h2>
+                <p>Hi ${data.name},</p>
+                <p>We are delighted to confirm that you have successfully completed your probation period as <strong>${data.role}</strong>.</p>
+                <p>Your employment is confirmed effective <strong>${data.effectiveDate}</strong>.</p>
+                <p>We look forward to your continued success with us!</p>
+            `;
+            break;
+        case 'document_attachment':
+            subject = `${company.companyName} — Document Attachment: ${data.documentName}`;
+            content = `
+                <h2>Document Attachment</h2>
+                <p>Hi ${data.name || 'there'},</p>
+                <p>Please find the attached document: <strong>${data.documentName}</strong>.</p>
+                <p>${data.message || 'This document was sent to you from the Internal Management System.'}</p>
+            `;
+            break;
+
+        default:
+            throw new Error(`Template ${templateId} is not defined.`);
+    }
+
+    return { subject, html: baseLayout(subject, content, company) };
 }
 
-/**
- * Send password reset email
- */
-async function sendPasswordResetEmail(to, name, resetUrl) {
-  const company = await getCompanyInfo();
-  const html = baseLayout('Reset Your Password', `
-    <h2>Password Reset Request</h2>
-    <p>Hi ${name},</p>
-    <p>We received a request to reset your password. Click the button below to create a new password.</p>
-    <a href="${resetUrl}" class="button">Reset Password</a>
-    <p style="margin-top:24px;font-size:13px;color:#9ca3af;">This link expires in 1 hour. If you didn't request a password reset, please ignore this email.</p>
-  `, company);
-  return send({
-    to,
-    subject: `${company.companyName} — Password Reset`,
-    html,
-    templateName: 'password_reset',
-    templateData: { name, resetUrl }
-  });
-}
+// ── Retrofitted original exported methods ────────────────────────────────────────────────────────────
 
-/**
- * Send project assignment notification
- */
-async function sendProjectAssignedEmail(to, name, projectName, projectUrl) {
-  const company = await getCompanyInfo();
-  const html = baseLayout('New Project Assigned', `
-    <h2>You've been assigned to a project</h2>
-    <p>Hi ${name},</p>
-    <p>You have been added as a member of the following project:</p>
-    <p><span class="badge" style="color: ${company.brandColor}; border-color: ${company.brandColor}55;">${projectName}</span></p>
-    <a href="${projectUrl}" class="button">View Project</a>
-  `, company);
-  return send({
-    to,
-    subject: `${company.companyName} — Project Assigned: ${projectName}`,
-    html,
-    templateName: 'project_assigned',
-    templateData: { name, projectName, projectUrl }
-  });
-}
-
-/**
- * Send salary notification
- */
-async function sendSalaryGeneratedEmail(to, name, month, netSalary) {
-  const company = await getCompanyInfo();
-  const html = baseLayout('Salary Generated', `
-    <h2>Your salary has been generated</h2>
-    <p>Hi ${name},</p>
-    <p>Your salary for <strong>${month}</strong> has been processed:</p>
-    <p style="font-size:32px;font-weight:700;color:${company.brandColor || '#4f46e5'};margin:16px 0;">₹${Number(netSalary).toLocaleString()}</p>
-    <a href="${process.env.CLIENT_URL}/dashboard/hr" class="button">View Salary Details</a>
-  `, company);
-  return send({
-    to,
-    subject: `${company.companyName} — Salary for ${month}`,
-    html,
-    templateName: 'salary_generated',
-    templateData: { name, month, netSalary }
-  });
-}
-
-/**
- * Send generic system alert
- */
-async function sendSystemAlert(to, subject, message) {
-  const company = await getCompanyInfo();
-  const html = baseLayout(subject, `<h2>System Alert</h2><p>${message}</p>`, company);
-  return send({ to, subject: `${company.companyName} — ${subject}`, html });
-}
-
-/**
- * Send welcome email to new user
- */
-async function sendWelcomeEmail(user, password) {
-  const company = await getCompanyInfo();
-  const loginUrl = process.env.CLIENT_URL;
-  const html = baseLayout(`Welcome to ${company.companyName}`, `
-    <h2>Welcome aboard, ${user.name}! 🚀</h2>
-    <p>Your account has been created successfully. You can now log in to the ${company.companyName} management system using the credentials below:</p>
-    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb;">
-      <p style="margin: 0; color: #64748b; font-size: 13px;">Email Address</p>
-      <p style="margin: 4px 0 12px; font-weight: 600; color: #1a1a2e;">${user.email}</p>
-      <p style="margin: 0; color: #64748b; font-size: 13px;">Temporary Password</p>
-      <p style="margin: 4px 0 0; font-weight: 600; color: #1a1a2e;">${password}</p>
-    </div>
-    <a href="${loginUrl}" class="button">Log In to Dashboard</a>
-    <p style="margin-top:24px;font-size:13px;color:#9ca3af;">For security reasons, we recommend changing your password after your first login.</p>
-  `, company);
-  return send({
-    to: user.email,
-    subject: `Welcome to ${company.companyName} — Your Account is Ready`,
-    html,
-    templateName: 'welcome',
-    templateData: { name: user.name, password }
-  });
-}
-
-/**
- * Send document tag notification
- */
-async function sendDocumentTagEmail(to, name, documentName, documentUrl, senderName) {
-  const company = await getCompanyInfo();
-  const html = baseLayout('Document Shared With You', `
-    <h2>You've been tagged in a document</h2>
-    <p>Hi ${name},</p>
-    <p><strong>${senderName}</strong> has tagged you in a new document:</p>
-    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb;">
-      <p style="margin: 0; color: #64748b; font-size: 13px;">Document Title</p>
-      <p style="margin: 4px 0; font-weight: 600; color: #1a1a2e;">${documentName}</p>
-    </div>
-    <a href="${documentUrl}" class="button">View Document</a>
-  `, company);
-  return send({
-    to,
-    subject: `${company.companyName} — Document Shared: ${documentName}`,
-    html,
-    templateName: 'document_tagged',
-    templateData: { name, documentName, documentUrl, senderName }
-  });
-}
-
-/**
- * Send salary slip notification (Alias for controller consistency)
- */
-async function sendSalarySlip(employee, salary) {
-  return sendSalaryGeneratedEmail(employee.email, employee.name, salary.month, salary.netSalary);
+async function sendEmailTemplate(to, templateName, templateData) {
+    const { subject, html } = await buildTemplate(templateName, templateData);
+    return send({ to, subject, html, templateName, templateData });
 }
 
 module.exports = {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-  sendProjectAssignedEmail,
-  sendSalaryGeneratedEmail,
-  sendSystemAlert,
-  sendWelcomeEmail,
-  sendDocumentTagEmail,
-  sendSalarySlip,
+    getTemplatePreview: async (templateId, templateData) => {
+        return buildTemplate(templateId, templateData);
+    },
 
-  /**
-   * General purpose Transitional Email (Used by AutomationService)
-   */
-  sendTransitionalEmail: async (to, subject, data) => {
-    const company = await getCompanyInfo();
-    const html = baseLayout(subject, `
+    // Specific legacy functions used across the app
+    sendVerificationEmail: (to, name, verificationUrl) => sendEmailTemplate(to, 'verification', { name, verificationUrl }),
+    sendPasswordResetEmail: (to, name, resetUrl) => sendEmailTemplate(to, 'password_reset', { name, resetUrl }),
+    sendProjectAssignedEmail: (to, name, projectName, projectUrl) => sendEmailTemplate(to, 'project_assigned', { name, projectName, projectUrl }),
+    sendTaskAssignedEmail: (to, name, taskTitle, projectName, taskUrl) => sendEmailTemplate(to, 'task_assigned', { name, taskTitle, projectName, taskUrl }),
+    sendSalaryGeneratedEmail: (to, name, month, netSalary) => sendEmailTemplate(to, 'salary_generated', { name, month, netSalary }),
+    sendSystemAlert: (to, subject, message) => sendEmailTemplate(to, 'system_alert', { subject, message }),
+    sendWelcomeEmail: (user, password) => sendEmailTemplate(user.email, 'welcome', { name: user.name, email: user.email, password }),
+    sendDocumentTagEmail: (to, name, documentName, documentUrl, senderName) => sendEmailTemplate(to, 'document_tagged', { name, documentName, documentUrl, senderName }),
+    sendSalarySlip: (employee, salary) => sendEmailTemplate(employee.email, 'salary_generated', { name: employee.name, month: salary.month, netSalary: salary.netSalary }),
+
+    sendTransitionalEmail: async (to, subject, data) => {
+        const company = await getCompanyInfo();
+        const html = baseLayout(subject, `
       <h2>${subject}</h2>
       <p>Hi ${data.name},</p>
       <p>${data.message}</p>
       ${data.ctaLink ? `<a href="${data.ctaLink}" class="button">${data.ctaText || 'View Details'}</a>` : ''}
     `, company);
-    return send({ to, subject: `${company.companyName} — ${subject}`, html });
-  },
+        return send({ to, subject: `${company.companyName} — ${subject}`, html, templateName: 'transitional', templateData: data });
+    },
 
-  /**
-   * Specialized Meeting Notification
-   */
-  sendMeetingEmail: async (to, name, meetingTitle, startTime, ctaUrl) => {
-    const company = await getCompanyInfo();
-    const html = baseLayout('Meeting Invitation', `
-      <h2>Meeting: ${meetingTitle}</h2>
-      <p>Hi ${name},</p>
-      <p>You have a meeting scheduled for <strong>${new Date(startTime).toLocaleString()}</strong>.</p>
-      <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb;">
-        <p style="margin: 0; color: #64748b; font-size: 13px;">Meeting Title</p>
-        <p style="margin: 4px 0; font-weight: 600; color: #1a1a2e;">${meetingTitle}</p>
-      </div>
-      <a href="${ctaUrl}" class="button">Join/View Meeting</a>
-    `, company);
-    return send({ to, subject: `${company.companyName} — Meeting: ${meetingTitle}`, html });
-  }
+    sendMeetingEmail: (to, name, meetingTitle, startTime, ctaUrl) => sendEmailTemplate(to, 'meeting_scheduled', { name, meetingTitle, startTime, ctaUrl }),
+
+    sendDocumentWithAttachment: async (to, name, documentName, message, attachment) => {
+        const { subject, html } = await buildTemplate('document_attachment', { name, documentName, message });
+        return send({ to, subject, html, templateName: 'document_attachment', templateData: { name, documentName, message }, attachments: [attachment] });
+    }
 };

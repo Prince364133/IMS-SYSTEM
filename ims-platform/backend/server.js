@@ -119,6 +119,7 @@ app.use('/api/onboarding', require('./src/routes/onboarding.routes'));
 app.use('/api/reviews', require('./src/routes/review.routes'));
 app.use('/api/milestones', require('./src/routes/milestone.routes'));
 app.use('/api/inventory', require('./src/routes/inventory.routes'));
+app.use('/api/assets', require('./src/routes/asset.routes'));
 app.use('/api/company-config', require('./src/routes/company-config.routes'));
 app.use('/api/setup', require('./src/routes/setup.routes'));
 

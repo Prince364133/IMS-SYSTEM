@@ -3,6 +3,8 @@
 const EmailLog = require('../models/EmailLog');
 const EmailService = require('../services/email.service');
 const User = require('../models/User');
+const Settings = require('../models/Settings');
+const nodemailer = require('nodemailer');
 
 /**
  * Get all email logs with pagination
@@ -35,65 +37,140 @@ exports.getEmailLogs = async (req, res, next) => {
 exports.getTemplates = async (req, res, next) => {
     try {
         const templates = [
+            // Original Templates
             { id: 'welcome', name: 'Welcome Email', fields: ['name', 'password'], description: 'Sent to newly created users with their credentials.' },
             { id: 'project_assigned', name: 'Project Assignment', fields: ['name', 'projectName', 'projectUrl'], description: 'Notifies a user they have been added to a project.' },
             { id: 'task_assigned', name: 'Task Assignment', fields: ['name', 'taskTitle', 'projectName', 'taskUrl'], description: 'Notifies a user of a new task.' },
             { id: 'salary_generated', name: 'Salary Generation', fields: ['name', 'month', 'netSalary'], description: 'Informs an employee that their salary slip is ready.' },
             { id: 'system_alert', name: 'System Alert', fields: ['subject', 'message'], description: 'Generic alert for important system announcements.' },
-            { id: 'verification', name: 'Verification Email', fields: ['name', 'verificationUrl'], description: 'Used to verify a user\'s email address.' },
+            {
+                id: 'verification', name: 'Verification Email', fields: ['name', 'verificationUrl'], description: "Used to verify a user's email address."
+            },
             { id: 'password_reset', name: 'Password Reset', fields: ['name', 'resetUrl'], description: 'Link to reset a forgotten password.' },
+            { id: 'document_tagged', name: 'Document Shared', fields: ['name', 'documentName', 'documentUrl', 'senderName'], description: 'Notifies a user they were tagged in a shared document.' },
+
+            // 15 New UI Improved Templates
+            { id: 'meeting_scheduled', name: 'Meeting Scheduled', fields: ['name', 'meetingTitle', 'startTime', 'ctaUrl'], description: 'Invitation mapping for upcoming meetings.' },
+            { id: 'leave_approved', name: 'Leave Request Approved', fields: ['name', 'leaveType', 'startDate', 'endDate'], description: 'Notification that a leave request was approved.' },
+            { id: 'leave_rejected', name: 'Leave Request Rejected', fields: ['name', 'leaveType', 'reason'], description: 'Notification that a leave request was rejected.' },
+            { id: 'task_completed', name: 'Task Completed', fields: ['name', 'taskTitle', 'projectName', 'ctaUrl'], description: 'Notifies relevant parties that a task is completed.' },
+            { id: 'invoice_generated', name: 'Invoice Generated', fields: ['clientName', 'invoiceNumber', 'amount', 'dueDate', 'ctaUrl'], description: 'Send a newly generated invoice to a client.' },
+            { id: 'payment_received', name: 'Payment Received', fields: ['clientName', 'invoiceNumber', 'amount', 'date'], description: 'Acknowledgment of a received invoice payment.' },
+            { id: 'performance_review', name: 'Performance Review Scheduled', fields: ['name', 'reviewDate', 'reviewerName', 'ctaUrl'], description: 'Invites an employee to their performance review.' },
+            { id: 'document_shared', name: 'Secure Document Shared', fields: ['name', 'documentName', 'senderName', 'ctaUrl'], description: 'Notifies users of securely shared documents.' },
+            { id: 'client_welcome', name: 'Client Welcome', fields: ['clientName', 'loginUrl'], description: 'Welcomes a new client to the portal.' },
+            { id: 'project_completed', name: 'Project Completed', fields: ['name', 'projectName', 'completionDate', 'ctaUrl'], description: 'Celebrates and notifies the completion of a project.' },
+            { id: 'expense_approved', name: 'Expense Approved', fields: ['name', 'expenseTitle', 'amount', 'date'], description: 'Notifies employee of approved business expenses.' },
+            { id: 'expense_rejected', name: 'Expense Rejected', fields: ['name', 'expenseTitle', 'amount', 'reason'], description: 'Notifies employee that expense was denied.' },
+            { id: 'contract_renewal', name: 'Contract Renewal', fields: ['clientName', 'contractName', 'renewalDate', 'ctaUrl'], description: 'Reminder for upcoming contract renewals.' },
+            { id: 'holiday_announcement', name: 'Holiday Announcement', fields: ['holidayName', 'date', 'message'], description: 'Broadcasts upcoming holidays to staff.' },
+            { id: 'probation_completed', name: 'Probation Completed', fields: ['name', 'role', 'effectiveDate'], description: 'Congratulates an employee on completing probation.' },
+            { id: 'document_attachment', name: 'Document Attachment', fields: ['name', 'documentName', 'message'], description: 'Sends an email with a document attached.' }
         ];
         res.json({ templates });
     } catch (err) { next(err); }
 };
 
 /**
- * Send an email based on a template and manual entry
+ * Generate Template Preview (HTML & Subject) before sending
+ */
+exports.previewTemplate = async (req, res, next) => {
+    try {
+        const { templateId, templateData } = req.body;
+
+        if (!templateId) {
+            return res.status(400).json({ error: 'Template ID is required' });
+        }
+
+        const preview = await EmailService.getTemplatePreview(templateId, templateData || {});
+
+        res.json({
+            subject: preview.subject,
+            html: preview.html
+        });
+    } catch (err) {
+        console.error('Preview error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to generate preview' });
+    }
+};
+
+/**
+ * Internal helper to send the email directly with nodemailer when using custom/edited HTML 
+ * (as EmailService.send is unexported, though we could just use a wrapper).
+ */
+async function sendRawWithLogging(options, req) {
+    const settings = await Settings.findOne();
+    const logId = (await EmailLog.create({
+        to: options.to,
+        subject: options.subject,
+        templateName: options.templateName || 'custom',
+        templateData: options.templateData || {},
+        sentBy: req.user ? req.user._id : null,
+        status: 'failed',
+    }))._id;
+
+    if (!settings || !settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
+        await EmailLog.findByIdAndUpdate(logId, { errorMessage: 'SMTP not configured' });
+        return { success: false, error: 'SMTP not configured' };
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            host: settings.smtpHost,
+            port: settings.smtpPort,
+            secure: settings.smtpSecure,
+            auth: {
+                user: settings.smtpUser,
+                pass: settings.smtpPass,
+            },
+        });
+
+        const info = await transporter.sendMail({
+            from: settings.emailFrom || 'noreply@internal.system',
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+        });
+
+        await EmailLog.findByIdAndUpdate(logId, { status: 'sent' });
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        await EmailLog.findByIdAndUpdate(logId, { status: 'failed', errorMessage: error.message });
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Send an email based on a template and manual entry (supports overridden subject & html from edit step)
  */
 exports.sendManualEmail = async (req, res, next) => {
     try {
-        const { to, templateId, templateData } = req.body;
+        const { to, templateId, templateData, editedSubject, editedHtml } = req.body;
 
         if (!to || !templateId) {
             return res.status(400).json({ error: 'Recipient address and Template ID are required' });
         }
 
-        let result = null;
+        let subject, html;
 
-        switch (templateId) {
-            case 'welcome':
-                result = await EmailService.sendWelcomeEmail({ email: to, name: templateData.name }, templateData.password);
-                break;
-            case 'project_assigned':
-                result = await EmailService.sendProjectAssignedEmail(to, templateData.name, templateData.projectName, templateData.projectUrl);
-                break;
-            case 'task_assigned':
-                result = await EmailService.sendTaskAssignedEmail(to, templateData.name, templateData.taskTitle, templateData.projectName, templateData.taskUrl);
-                break;
-            case 'salary_generated':
-                result = await EmailService.sendSalaryGeneratedEmail(to, templateData.name, templateData.month, templateData.netSalary);
-                break;
-            case 'system_alert':
-                result = await EmailService.sendSystemAlert(to, templateData.subject, templateData.message);
-                break;
-            case 'verification':
-                result = await EmailService.sendVerificationEmail(to, templateData.name, templateData.verificationUrl);
-                break;
-            case 'password_reset':
-                result = await EmailService.sendPasswordResetEmail(to, templateData.name, templateData.resetUrl);
-                break;
-            default:
-                return res.status(400).json({ error: `Unknown template: ${templateId}` });
+        if (editedSubject && editedHtml) {
+            // Priority to edited content
+            subject = editedSubject;
+            html = editedHtml;
+        } else {
+            // Generate standard preview
+            const preview = await EmailService.getTemplatePreview(templateId, templateData || {});
+            subject = preview.subject;
+            html = preview.html;
         }
 
-        // Tag the log entry with the user who triggered it manually
-        if (result.success) {
-            await EmailLog.findOneAndUpdate(
-                { to, status: 'sent' },
-                { sentBy: req.user._id },
-                { sort: { createdAt: -1 } }
-            );
-        }
+        const result = await sendRawWithLogging({
+            to,
+            subject,
+            html,
+            templateName: templateId,
+            templateData: templateData || {},
+        }, req);
 
         if (!result.success) {
             return res.status(500).json({ error: result.error || 'Failed to send email' });
@@ -103,9 +180,6 @@ exports.sendManualEmail = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-/**
- * Send a fully custom email (no template — raw subject + HTML body)
- */
 exports.sendCustomEmail = async (req, res, next) => {
     try {
         const { to, subject, body } = req.body;
@@ -114,20 +188,62 @@ exports.sendCustomEmail = async (req, res, next) => {
             return res.status(400).json({ error: 'Recipient, subject, and body are required' });
         }
 
-        const result = await EmailService.sendSystemAlert(to, subject, body);
+        const result = await sendRawWithLogging({
+            to,
+            subject,
+            html: body,
+            templateName: 'custom'
+        }, req);
 
         if (!result.success) {
             return res.status(500).json({ error: result.error || 'Failed to send email' });
         }
 
-        // Tag with manual sender
-        await EmailLog.findOneAndUpdate(
-            { to, status: 'sent' },
-            { sentBy: req.user._id },
-            { sort: { createdAt: -1 } }
+        res.json({ message: 'Custom email sent successfully' });
+    } catch (err) { next(err); }
+};
+
+/**
+ * Send an email with a document attachment (base64)
+ */
+exports.sendDocumentEmail = async (req, res, next) => {
+    try {
+        const { to, name, documentName, message, fileData, fileName, attachment: nestedAttachment } = req.body;
+
+        if (!to) {
+            return res.status(400).json({ error: 'Recipient email is required' });
+        }
+
+        let finalAttachment;
+        if (nestedAttachment && nestedAttachment.fileData) {
+            finalAttachment = {
+                filename: nestedAttachment.fileName || 'document.pdf',
+                content: nestedAttachment.fileData.split('base64,')[1] || nestedAttachment.fileData,
+                encoding: 'base64'
+            };
+        } else if (fileData && fileName) {
+            finalAttachment = {
+                filename: fileName,
+                content: fileData.split('base64,')[1] || fileData,
+                encoding: 'base64'
+            };
+        } else {
+            return res.status(400).json({ error: 'File data and file name are required' });
+        }
+
+        const result = await EmailService.sendDocumentWithAttachment(
+            to,
+            name || 'Valued Recipient',
+            documentName || 'Document',
+            message || 'Attached document for your review.',
+            finalAttachment
         );
 
-        res.json({ message: 'Custom email sent successfully' });
+        if (!result.success) {
+            return res.status(500).json({ error: result.error || 'Failed to send document email' });
+        }
+
+        res.json({ message: 'Document sent successfully via email' });
     } catch (err) { next(err); }
 };
 
@@ -154,18 +270,17 @@ exports.sendBulkEmail = async (req, res, next) => {
 
         for (const user of users) {
             try {
-                await EmailService.sendSystemAlert(user.email, subject, message);
-                sent++;
+                const result = await sendRawWithLogging({
+                    to: user.email,
+                    subject,
+                    html: message,
+                    templateName: 'bulk',
+                }, req);
+                if (result.success) sent++; else failed++;
             } catch (e) {
                 failed++;
             }
         }
-
-        // Tag logs with sender
-        await EmailLog.updateMany(
-            { subject, status: 'sent', sentBy: null },
-            { sentBy: req.user._id }
-        );
 
         res.json({
             message: `Bulk email complete. Sent: ${sent}, Failed: ${failed}`,
@@ -191,13 +306,16 @@ exports.retryEmail = async (req, res, next) => {
             return res.status(400).json({ error: 'Email already sent successfully' });
         }
 
-        const result = await EmailService.sendSystemAlert(
-            log.to,
-            log.subject,
-            `Retry: ${log.subject}`
-        );
+        const result = await sendRawWithLogging({
+            to: log.to,
+            subject: `Retry: ${log.subject}`,
+            html: log.html || `Retry trigger: ${log.subject}`, // Ideally we'd store HTML, but fallback message for now
+            templateName: log.templateName,
+            templateData: log.templateData,
+        }, req);
 
         if (result.success) {
+            // Also update the original log
             log.status = 'sent';
             log.errorMessage = null;
             log.sentBy = req.user._id;
@@ -221,7 +339,13 @@ exports.getEmailStats = async (req, res, next) => {
             ]),
             // Breakdown by template
             EmailLog.aggregate([
-                { $group: { _id: '$templateName', count: { $sum: 1 }, failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } } } },
+                {
+                    $group: {
+                        _id: '$templateName',
+                        count: { $sum: 1 },
+                        failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } }
+                    }
+                },
                 { $sort: { count: -1 } },
                 { $limit: 10 }
             ]),
@@ -234,97 +358,5 @@ exports.getEmailStats = async (req, res, next) => {
         ]);
 
         res.json({ stats: statusStats, templateStats, recentActivity });
-    } catch (err) { next(err); }
-};
-
-
-/**
- * Get available email templates and their definitions
- */
-exports.getTemplates = async (req, res, next) => {
-    try {
-        const templates = [
-            { id: 'welcome', name: 'Welcome Email', fields: ['name', 'password'], description: 'Sent to newly created users with their credentials.' },
-            { id: 'project_assigned', name: 'Project Assignment', fields: ['name', 'projectName', 'projectUrl'], description: 'Notifies a user they have been added to a project.' },
-            { id: 'task_assigned', name: 'Task Assignment', fields: ['name', 'taskTitle', 'projectName', 'taskUrl'], description: 'Notifies a user of a new task.' },
-            { id: 'salary_generated', name: 'Salary Generation', fields: ['name', 'month', 'netSalary'], description: 'Informs an employee that their salary slip is ready.' },
-            { id: 'system_alert', name: 'System Alert', fields: ['subject', 'message'], description: 'Generic alert for important system announcements.' },
-            { id: 'verification', name: 'Verification Email', fields: ['name', 'verificationUrl'], description: 'Used to verify a user\'s email address.' },
-            { id: 'password_reset', name: 'Password Reset', fields: ['name', 'resetUrl'], description: 'Link to reset a forgotten password.' },
-        ];
-        res.json({ templates });
-    } catch (err) { next(err); }
-};
-
-/**
- * Send an email based on a template and manual entry
- */
-exports.sendManualEmail = async (req, res, next) => {
-    try {
-        const { to, templateId, templateData } = req.body;
-
-        if (!to || !templateId) {
-            return res.status(400).json({ error: 'Recipient address and Template ID are required' });
-        }
-
-        let result = null;
-
-        switch (templateId) {
-            case 'welcome':
-                result = await EmailService.sendWelcomeEmail({ email: to, name: templateData.name }, templateData.password);
-                break;
-            case 'project_assigned':
-                result = await EmailService.sendProjectAssignedEmail(to, templateData.name, templateData.projectName, templateData.projectUrl);
-                break;
-            case 'task_assigned':
-                result = await EmailService.sendTaskAssignedEmail(to, templateData.name, templateData.taskTitle, templateData.projectName, templateData.taskUrl);
-                break;
-            case 'salary_generated':
-                result = await EmailService.sendSalaryGeneratedEmail(to, templateData.name, templateData.month, templateData.netSalary);
-                break;
-            case 'system_alert':
-                result = await EmailService.sendSystemAlert(to, templateData.subject, templateData.message);
-                break;
-            case 'verification':
-                result = await EmailService.sendVerificationEmail(to, templateData.name, templateData.verificationUrl);
-                break;
-            case 'password_reset':
-                result = await EmailService.sendPasswordResetEmail(to, templateData.name, templateData.resetUrl);
-                break;
-            default:
-                return res.status(400).json({ error: `Unknown template: ${templateId}` });
-        }
-
-        // Tag the log entry with the user who triggered it manually
-        if (result.success) {
-            await EmailLog.findOneAndUpdate(
-                { to, status: 'sent' },
-                { sentBy: req.user._id },
-                { sort: { createdAt: -1 } }
-            );
-        }
-
-        if (!result.success) {
-            return res.status(500).json({ error: result.error || 'Failed to send email' });
-        }
-
-        res.json({ message: 'Email sent successfully and logged' });
-    } catch (err) { next(err); }
-};
-
-/**
- * Get detailed stats for email service
- */
-exports.getEmailStats = async (req, res, next) => {
-    try {
-        const stats = await EmailLog.aggregate([
-            {
-                $group: {
-                    _id: '$status',
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-        res.json({ stats });
     } catch (err) { next(err); }
 };

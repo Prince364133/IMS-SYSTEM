@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '../../../lib/api';
-import { Building2, Search, Plus, Loader2, Globe, Mail, Phone, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Search, Plus, Globe, Mail, Phone, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import Skeleton from '../../../components/Skeleton';
 import { useAuth } from '../../../lib/auth-context';
 import AddClientModal from '../../../components/AddClientModal';
 import ConfirmModal from '../../../components/ConfirmModal';
@@ -83,8 +84,26 @@ export default function ClientsPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="card p-5 space-y-4">
+                            <div className="flex items-start gap-3">
+                                <Skeleton variant="rounded" width={44} height={44} />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton variant="text" width="70%" height={16} />
+                                    <Skeleton variant="text" width="40%" height={12} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Skeleton variant="text" width="60%" height={10} />
+                                <Skeleton variant="text" width="50%" height={10} />
+                            </div>
+                            <div className="pt-3 border-t border-gray-50 flex gap-2">
+                                <Skeleton variant="rounded" width={60} height={20} />
+                                <Skeleton variant="rounded" width={60} height={20} />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

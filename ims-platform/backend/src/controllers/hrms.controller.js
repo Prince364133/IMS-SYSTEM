@@ -14,12 +14,22 @@ exports.getDashboard = async (req, res, next) => {
         const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
         const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
+        // Last month date range for project comparison
+        const lastMonthStart = new Date();
+        lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+        lastMonthStart.setDate(1);
+        lastMonthStart.setHours(0, 0, 0, 0);
+        const lastMonthEnd = new Date(lastMonthStart);
+        lastMonthEnd.setMonth(lastMonthEnd.getMonth() + 1);
+        lastMonthEnd.setDate(0);
+        lastMonthEnd.setHours(23, 59, 59, 999);
+
         const [
             totalEmployees, activeEmployees,
             totalProjects, activeProjects,
             totalTasks, pendingTasks,
             todayAttendance, totalClients,
-            pendingSalaries,
+            pendingSalaries, prevMonthActive,
         ] = await Promise.all([
             User.countDocuments({ role: 'employee' }),
             User.countDocuments({ role: 'employee', isActive: true }),
@@ -30,6 +40,7 @@ exports.getDashboard = async (req, res, next) => {
             Attendance.countDocuments({ date: today, status: 'present' }),
             Client.countDocuments({}),
             Salary.countDocuments({ month: thisMonth, status: 'pending' }),
+            Project.countDocuments({ status: 'in_progress', updatedAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
         ]);
 
         // Attendance rate for today
@@ -39,7 +50,7 @@ exports.getDashboard = async (req, res, next) => {
 
         res.json({
             employees: { total: totalEmployees, active: activeEmployees },
-            projects: { total: totalProjects, active: activeProjects },
+            projects: { total: totalProjects, active: activeProjects, prevMonthActive },
             tasks: { total: totalTasks, pending: pendingTasks },
             attendance: { today: todayAttendance, rate: attendanceRate },
             clients: { total: totalClients },

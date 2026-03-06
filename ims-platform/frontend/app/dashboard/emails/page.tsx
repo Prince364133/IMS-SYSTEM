@@ -57,6 +57,9 @@ export default function EmailManagementPage() {
     const [showAiDraft, setShowAiDraft] = useState(false);
     const [aiDraftTarget, setAiDraftTarget] = useState<'custom' | 'bulk'>('custom');
 
+    // ── Template Preview Mode ─────────────────────────────────────────────────
+    const [templatePreview, setTemplatePreview] = useState<{ show: boolean, loading: boolean, subject: string, html: string, mode: 'edit' | 'view' } | null>(null);
+
     const isHR = user && ['admin', 'hr'].includes(user.role);
 
     const fetchLogs = useCallback(async () => {
@@ -96,6 +99,37 @@ export default function EmailManagementPage() {
     useEffect(() => { if (isHR && activeTab === 'dashboard') fetchStats(); }, [isHR, activeTab, fetchStats]);
 
     // ── Handlers ───────────────────────────────────────────────────────────────
+    async function handlePreviewTemplate(e: React.FormEvent) {
+        e.preventDefault();
+        setTemplatePreview({ show: true, loading: true, subject: '', html: '', mode: 'view' });
+        try {
+            const res = await api.post('/api/emails/preview', { templateId: form.templateId, templateData: form.templateData });
+            setTemplatePreview({ show: true, loading: false, subject: res.data.subject, html: res.data.html, mode: 'view' });
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Failed to generate template preview');
+            setTemplatePreview(null);
+        }
+    }
+
+    async function handleSendEditedTemplate() {
+        if (!templatePreview) return;
+        setSending(true);
+        try {
+            await api.post('/api/emails/send', {
+                ...form,
+                editedSubject: templatePreview.subject,
+                editedHtml: templatePreview.html
+            });
+            toast.success('Email sent successfully!');
+            setForm({ to: '', templateId: '', templateData: {} });
+            setTemplatePreview(null);
+            setActiveTab('history');
+            fetchLogs();
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Failed to send email');
+        } finally { setSending(false); }
+    }
+
     async function handleSendTemplate(e: React.FormEvent) {
         e.preventDefault();
         setSending(true);
@@ -463,7 +497,7 @@ export default function EmailManagementPage() {
                         <div className="card-body">
                             {/* Template Mode */}
                             {composeMode === 'template' && (
-                                <form onSubmit={handleSendTemplate} className="space-y-5">
+                                <form onSubmit={handlePreviewTemplate} className="space-y-5">
                                     <div>
                                         <label className="label">Recipient Email *</label>
                                         <input
@@ -532,11 +566,11 @@ export default function EmailManagementPage() {
 
                                     <button
                                         type="submit"
-                                        disabled={sending || !form.to || !form.templateId}
+                                        disabled={templatePreview?.loading || !form.to || !form.templateId}
                                         className="btn-primary w-full"
                                     >
-                                        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                        {sending ? 'Sending...' : 'Send Email'}
+                                        {templatePreview?.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                                        {templatePreview?.loading ? 'Generating...' : 'Preview & Edit'}
                                     </button>
                                 </form>
                             )}
@@ -636,7 +670,7 @@ export default function EmailManagementPage() {
                                 <div>
                                     <label className="label">Target Audience *</label>
                                     <select className="select" value={bulkForm.role} onChange={e => setBulkForm(p => ({ ...p, role: e.target.value }))}>
-                                        <option value="all">🌐 All Active Users ({users.length})</option>
+                                        <option value="all">All Active Users ({users.length})</option>
                                         {['admin', 'manager', 'hr', 'employee', 'client'].map(r => (
                                             <option key={r} value={r}>
                                                 {r.charAt(0).toUpperCase() + r.slice(1)} ({users.filter(u => u.role === r).length} users)
@@ -750,6 +784,94 @@ export default function EmailManagementPage() {
                             >
                                 <RefreshCw className="w-4 h-4" /> Retry Email
                             </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Template Preview & Edit Modal ───────────────────────────────── */}
+            {templatePreview?.show && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] flex flex-col">
+                        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                            <h3 className="font-bold text-gray-900 flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Preview & Edit Email</h3>
+                            <button onClick={() => setTemplatePreview(null)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+                        </div>
+
+                        {templatePreview.loading ? (
+                            <div className="flex-1 flex flex-col items-center justify-center p-12 text-gray-400">
+                                <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                                <p>Generating template...</p>
+                            </div>
+                        ) : (
+                            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                                <div>
+                                    <label className="label">Subject *</label>
+                                    <input
+                                        type="text"
+                                        className="input font-medium"
+                                        value={templatePreview.subject}
+                                        onChange={e => setTemplatePreview(p => ({ ...p!, subject: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+                                    <button
+                                        onClick={() => setTemplatePreview(p => ({ ...p!, mode: 'view' }))}
+                                        className={clsx(
+                                            "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                            templatePreview.mode === 'view' ? "bg-white shadow-sm text-primary" : "text-gray-500 hover:text-gray-700"
+                                        )}
+                                    >
+                                        Visual Preview
+                                    </button>
+                                    <button
+                                        onClick={() => setTemplatePreview(p => ({ ...p!, mode: 'edit' }))}
+                                        className={clsx(
+                                            "px-3 py-1.5 text-xs font-bold rounded-md transition-all",
+                                            templatePreview.mode === 'edit' ? "bg-white shadow-sm text-primary" : "text-gray-500 hover:text-gray-700"
+                                        )}
+                                    >
+                                        Edit HTML
+                                    </button>
+                                </div>
+
+                                {templatePreview.mode === 'edit' ? (
+                                    <div>
+                                        <label className="label">Message Body (HTML) *</label>
+                                        <textarea
+                                            rows={12}
+                                            className="input font-mono text-xs leading-relaxed resize-y min-h-[300px]"
+                                            value={templatePreview.html}
+                                            onChange={e => setTemplatePreview(p => ({ ...p!, html: e.target.value }))}
+                                        />
+                                        <p className="text-xs text-gray-400 mt-2">
+                                            You can freely edit the generated HTML before sending. Be careful not to break tags.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 flex-1 min-h-[400px]">
+                                        <iframe
+                                            title="Email Preview"
+                                            className="w-full h-full min-h-[400px] border-none bg-white"
+                                            srcDoc={templatePreview.html}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {!templatePreview.loading && (
+                            <div className="mt-6 pt-4 border-t border-gray-100 flex gap-3 flex-shrink-0">
+                                <button onClick={() => setTemplatePreview(null)} className="btn-secondary flex-1">Cancel</button>
+                                <button
+                                    onClick={handleSendEditedTemplate}
+                                    disabled={sending || !templatePreview.subject || !templatePreview.html}
+                                    className="btn-primary flex-1 whitespace-nowrap"
+                                >
+                                    {sending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : <><Send className="w-4 h-4" /> Send Final Email</>}
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import api from '../../../lib/api';
-import { FolderKanban, Plus, Search, Loader2 } from 'lucide-react';
+import { FolderKanban, Plus, Search } from 'lucide-react';
+import { SkeletonCard } from '../../../components/Skeleton';
 import Link from 'next/link';
 import clsx from 'clsx';
 import CreateProjectModal from '../../../components/CreateProjectModal';
@@ -85,8 +86,10 @@ export default function ProjectsPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <SkeletonCard key={i} />
+                    ))}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

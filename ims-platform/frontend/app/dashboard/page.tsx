@@ -5,8 +5,9 @@ import { useAuth } from '../../lib/auth-context';
 import api from '../../lib/api';
 import {
     Users, FolderKanban, CheckSquare, Calendar,
-    TrendingUp, DollarSign, Loader2, AlertCircle, Zap, Settings as SettingsIcon
+    TrendingUp, DollarSign, AlertCircle, Zap, Settings as SettingsIcon
 } from 'lucide-react';
+import Skeleton, { SkeletonStatsCard, SkeletonChart } from '../../components/Skeleton';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
@@ -44,9 +45,9 @@ function AIInsightWrapper() {
 
     if (loading) {
         return (
-            <div className="flex items-center gap-2 text-sm text-gray-500 italic mt-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Thinking...
+            <div className="space-y-2 mt-2">
+                <Skeleton variant="text" width="100%" height={12} />
+                <Skeleton variant="text" width="80%" height={12} />
             </div>
         );
     }
@@ -154,25 +155,27 @@ export default function DashboardPage() {
 
             {/* Stat cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {STAT_CARDS.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                        <div key={item.key} className="stat-card group hover:shadow-md transition-shadow">
-                            <div className={`stat-icon ${item.bg}`}>
-                                <Icon className={`w-6 h-6 ${item.iconColor}`} />
-                            </div>
-                            <div>
-                                {loading ? (
-                                    <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
-                                ) : (
+                {loading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <SkeletonStatsCard key={i} />
+                    ))
+                ) : (
+                    STAT_CARDS.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <div key={item.key} className="stat-card group hover:shadow-md transition-shadow">
+                                <div className={`stat-icon ${item.bg}`}>
+                                    <Icon className={`w-6 h-6 ${item.iconColor}`} />
+                                </div>
+                                <div>
                                     <p className="text-2xl font-bold text-gray-900">{getStatValue(item.key)}</p>
-                                )}
-                                <p className="text-sm text-gray-500 font-medium">{item.label}</p>
-                                <p className="text-xs text-gray-400 mt-0.5">{getSubText(item.key)}</p>
+                                    <p className="text-sm text-gray-500 font-medium">{item.label}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{getSubText(item.key)}</p>
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
 
             {/* AI Insights Card */}
@@ -195,42 +198,51 @@ export default function DashboardPage() {
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="card p-5">
-                    <h3 className="font-semibold text-gray-900 mb-4">Weekly Activity</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={chartData}>
-                            <defs>
-                                <linearGradient id="colorProjects" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
-                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }} />
-                            <Area type="monotone" dataKey="projects" stroke="#6366f1" strokeWidth={2} fill="url(#colorProjects)" name="Projects" />
-                            <Area type="monotone" dataKey="tasks" stroke="#8b5cf6" strokeWidth={2} fill="url(#colorTasks)" name="Tasks" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
+                {loading ? (
+                    <>
+                        <SkeletonChart />
+                        <SkeletonChart />
+                    </>
+                ) : (
+                    <>
+                        <div className="card p-5">
+                            <h3 className="font-semibold text-gray-900 mb-4">Weekly Activity</h3>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorProjects" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.15} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                    <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }} />
+                                    <Area type="monotone" dataKey="projects" stroke="#6366f1" strokeWidth={2} fill="url(#colorProjects)" name="Projects" />
+                                    <Area type="monotone" dataKey="tasks" stroke="#8b5cf6" strokeWidth={2} fill="url(#colorTasks)" name="Tasks" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
 
-                <div className="card p-5">
-                    <h3 className="font-semibold text-gray-900 mb-4">Tasks by Day</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={chartData} barSize={28}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }} />
-                            <Bar dataKey="tasks" fill="#6366f1" radius={[6, 6, 0, 0]} name="Tasks" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                        <div className="card p-5">
+                            <h3 className="font-semibold text-gray-900 mb-4">Tasks by Day</h3>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <BarChart data={chartData} barSize={28}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                    <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }} />
+                                    <Bar dataKey="tasks" fill="#6366f1" radius={[6, 6, 0, 0]} name="Tasks" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

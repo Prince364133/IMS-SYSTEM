@@ -11,6 +11,7 @@ const Meeting = require('../models/CalendarEvent');
 const mongoose = require('mongoose');
 const AnalyticsService = require('./analytics.service');
 const AIAutomationService = require('./ai-automation.service');
+const CompanyConfig = require('../models/CompanyConfig');
 
 /**
  * Cron Service - Handles all scheduled tasks
@@ -139,33 +140,62 @@ class CronService {
     }
 
     /**
-     * Auto-generate Monthly Salary Drafts
+     * Auto-generate Monthly Salary Drafts based on Release Date
      */
     async monthlySalaryGeneration() {
-        const lastMonth = new Date();
-        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const today = new Date();
+        const config = await CompanyConfig.findOne();
+        const releaseDate = config?.salaryReleaseDate || 1;
+        const workingDays = config?.workingDaysPerMonth || 22;
+
+        // Only run on the defined release date
+        if (today.getDate() !== releaseDate) return;
+
+        // Calculate for previous month
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
         const monthName = lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
 
         const employees = await User.find({ role: 'employee', status: 'active' });
 
         for (const emp of employees) {
-            // Logic to calculate working days, deductions etc would go here
-            // For now, we create a draft salary record
-            const salary = await Salary.create({
+            // Check if already generated
+            const existing = await Salary.findOne({ employeeId: emp._id, month: monthName });
+            if (existing) continue;
+
+            // Calculate absences
+            const absences = await Attendance.countDocuments({
                 user: emp._id,
-                month: monthName,
-                amount: emp.salary || 0,
-                status: 'pending'
+                date: { $gte: lastMonth, $lte: endOfLastMonth },
+                status: 'absent'
             });
 
-            await AutomationService.trigger({
-                eventType: 'salary_generated',
-                targetUser: emp._id,
-                relatedItem: { itemId: salary._id, itemModel: 'Salary' },
-                description: `Your salary slip for ${monthName} has been generated.`,
-                metadata: { month: monthName, amount: emp.salary }
+            const baseSalary = emp.salary || 0;
+            const netSalary = AnalyticsService.calculateNetSalary(baseSalary, workingDays, absences, 0, 0, 0);
+
+            const salary = await Salary.create({
+                employeeId: emp._id,
+                month: monthName,
+                baseSalary: baseSalary,
+                netSalary: netSalary,
+                deductions: 0, // Manual deductions placeholder
+                bonuses: 0,
+                status: 'pending' // Drafts are pending HR review
             });
+
+            // Notify HR/Admins
+            const hrs = await User.find({ role: { $in: ['hr', 'admin'] } }).select('_id');
+            for (const hr of hrs) {
+                await AutomationService.trigger({
+                    eventType: 'salary_generated',
+                    targetUser: hr._id,
+                    relatedItem: { itemId: salary._id, itemModel: 'Salary' },
+                    description: `Salary draft for ${emp.name} (${monthName}) is ready for review.`,
+                    metadata: { month: monthName, employeeName: emp.name }
+                });
+            }
         }
+        console.log(`Salary generation completed for ${monthName}`);
     }
 
     /**

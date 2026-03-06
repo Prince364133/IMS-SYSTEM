@@ -3,6 +3,7 @@
 const Salary = require('../models/Salary');
 const User = require('../models/User');
 const AnalyticsService = require('../services/analytics.service');
+const EmailService = require('../services/email.service');
 
 exports.getSalaries = async (req, res, next) => {
     try {
@@ -17,6 +18,28 @@ exports.getSalaries = async (req, res, next) => {
             .populate('generatedBy', 'name email')
             .sort({ createdAt: -1 }).lean();
         res.json({ salaries });
+    } catch (err) { next(err); }
+};
+
+exports.hrApproveSalary = async (req, res, next) => {
+    try {
+        const { deductions, bonuses, notes } = req.body;
+        const salary = await Salary.findById(req.params.id).populate('employeeId');
+        if (!salary) return res.status(404).json({ error: 'Salary record not found' });
+
+        const base = salary.baseSalary || salary.employeeId?.salary || 0;
+        // Simple recalculation based on manual adjustments (ignoring absents here as it was handled in creation)
+        const netSalary = Math.max(0, base - (deductions || 0) + (bonuses || 0));
+
+        const updated = await Salary.findByIdAndUpdate(req.params.id, {
+            status: 'hr_approved',
+            deductions: deductions || 0,
+            bonuses: bonuses || 0,
+            netSalary,
+            notes
+        }, { new: true }).lean();
+
+        res.json({ salary: updated });
     } catch (err) { next(err); }
 };
 
@@ -71,8 +94,23 @@ exports.markPaid = async (req, res, next) => {
             req.params.id,
             { status: 'paid', paidAt: new Date() },
             { new: true }
-        ).lean();
+        ).populate('employeeId', 'name email').lean();
+
         if (!salary) return res.status(404).json({ error: 'Salary record not found' });
+
+        // Generate and email Payslip to employee implicitly
+        try {
+            await EmailService.sendEmail(salary.employeeId.email, 'Payslip Generated', 'payslip_generated', {
+                employeeName: salary.employeeId.name,
+                month: salary.month,
+                netSalary: salary.netSalary,
+                dashboardUrl: process.env.CLIENT_URL || 'http://localhost:3000'
+            });
+            console.log(`Payslip email sent to ${salary.employeeId.email}`);
+        } catch (emailErr) {
+            console.error('Failed to send payslip email:', emailErr);
+        }
+
         res.json({ salary });
     } catch (err) { next(err); }
 };

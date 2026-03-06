@@ -6,7 +6,8 @@ import {
     FolderKanban, CheckSquare, Bell, Settings,
     HelpCircle, Zap, ExternalLink, Globe,
     Shield, ArrowRight, MessageCircle, Info, ShieldCheck,
-    ChevronDown, Plus, Users, Clock, Brain, Mail, Server, Database
+    ChevronDown, Plus, Users, Clock, Brain, Mail, Server, Database,
+    DollarSign, FileText, Calendar, BarChart2 as BarChart, Box, CreditCard
 } from 'lucide-react';
 import { useSettings } from '../../../lib/settings-context';
 import Link from 'next/link';
@@ -18,6 +19,16 @@ const SECTIONS = [
     { id: 'dashboard', title: 'Dashboard Overview', icon: LayoutDashboard },
     { id: 'projects', title: 'Managing Projects', icon: FolderKanban },
     { id: 'tasks', title: 'Task Management', icon: CheckSquare },
+    { id: 'chat', title: 'Team & Client Chat', icon: MessageCircle },
+    { id: 'calendar', title: 'Calendar & Meetings', icon: Calendar },
+    { id: 'time-tracking', title: 'Time Tracking', icon: Clock },
+    { id: 'hr-management', title: 'HR & Leave Management', icon: Users },
+    { id: 'finance', title: 'Finance, Invoices & Expenses', icon: CreditCard },
+    { id: 'assets', title: 'Digital Assets Manager', icon: Globe },
+    { id: 'analytics', title: 'Analytics & Reports', icon: BarChart },
+    { id: 'documents', title: 'File Storage & Google Drive', icon: Database },
+    { id: 'payroll', title: 'Salary & Payroll Workflow', icon: DollarSign },
+    { id: 'emails', title: 'Automated Email Templates', icon: Mail },
     { id: 'notifications', title: 'Notifications & Updates', icon: Bell },
     { id: 'settings', title: 'Settings & Configuration', icon: Settings },
     { id: 'activation', title: 'System Activation', icon: ShieldCheck },
@@ -42,6 +53,14 @@ const FAQS = [
     {
         q: "How do I track task progress?",
         a: "Each task has a status (To Do, In Progress, Review, Done). When you finish work, click the task and update its status. You can see the visual progress bar on the project overview page."
+    },
+    {
+        q: "Why can't I upload a document?",
+        a: "Document uploading requires Google Drive to be configured by an administrator. Check Settings -> Storage to ensure the integration is active."
+    },
+    {
+        q: "How is my salary calculated?",
+        a: "Salaries are calculated automatically on the global release date. Base pay is reduced proportionately for any registered absences."
     }
 ];
 
@@ -245,6 +264,163 @@ export default function DocsPage() {
                                         <br /><br />
                                         **Tasks** are the specific, actionable steps needed to complete a Project. Always break a project down into multiple tasks.
                                     </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Section new: Team & Client Chat */}
+                        <section id="chat" className="scroll-mt-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <MessageCircle className="w-6 h-6 text-indigo-500" />
+                                Team & Client Chat
+                            </h2>
+                            <p className="text-gray-600 mb-6">Communicate securely with your entire organization and assigned clients directly within IMS.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li><strong>Mentions:</strong> Type <code>@</code> in any chat to tag users. The system dynamically filters who you can mention.</li>
+                                <li><strong>Client Chat Rules:</strong> Clients are only visible in chats if the <code>employeeClientChatAllowed</code> setting is enabled.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section new: Calendar & Meetings */}
+                        <section id="calendar" className="scroll-mt-8 mt-12">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <Calendar className="w-6 h-6 text-blue-500" />
+                                Calendar & Meetings
+                            </h2>
+                            <p className="text-gray-600 mb-6">Stay organized with a centralized company-wide calendar for all scheduled events.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li>View impending project deadlines, upcoming meetings, and scheduled tasks.</li>
+                                <li>Click on an empty slot to schedule a new meeting with colleagues or clients.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section new: Time Tracking */}
+                        <section id="time-tracking" className="scroll-mt-8 mt-12">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <Clock className="w-6 h-6 text-amber-500" />
+                                Time & Activity Tracking
+                            </h2>
+                            <p className="text-gray-600 mb-6">Track your daily work hours seamlessly against specific tasks.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li>Log your active hours directly into the Time Tracking dashboard.</li>
+                                <li>Managers receive comprehensive reports showing time metrics for performance reviews.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section new: HR & Directory */}
+                        <section id="hr-management" className="scroll-mt-8 mt-12">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <Users className="w-6 h-6 text-emerald-500" />
+                                HR Management & Leave Requests
+                            </h2>
+                            <p className="text-gray-600 mb-6">A central hub for human resources to manage employee data and leaves.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li><strong>Employee Directory:</strong> View profiles, contact details, and assigned roles.</li>
+                                <li><strong>Leave Requests:</strong> Apply for sick days or paid time off directly. HR evaluates all incoming requests on a dedicated dashboard.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section new: Finance */}
+                        <section id="finance" className="scroll-mt-8 mt-12">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <CreditCard className="w-6 h-6 text-rose-500" />
+                                Finance, Invoices & Expenses
+                            </h2>
+                            <p className="text-gray-600 mb-6">The Finance module centralizes all monetary transactions tied to projects and daily operations.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li><strong>Invoices:</strong> Automatically generate, send, and track PDF invoices for client projects.</li>
+                                <li><strong>Expenses:</strong> Submit business expenses to administrators for reimbursements.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section new: Digital Assets */}
+                        <section id="assets" className="scroll-mt-8 mt-12">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <Globe className="w-6 h-6 text-indigo-500" />
+                                Digital Assets Manager
+                            </h2>
+                            <p className="text-gray-600 mb-6">Track and manage your entire digital infrastructure in one place, from domains to API keys.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li><strong>Asset Types:</strong> Manage Domains, Servers, APIs, Licenses, and Git Repositories.</li>
+                                <li><strong>Renewal Tracking:</strong> Receive automatic reminders for upcoming domain or certificate renewals.</li>
+                                <li><strong>Cost Analysis:</strong> Monitor monthly and yearly infrastructure spending to stay within budget.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section new: Analytics */}
+                        <section id="analytics" className="scroll-mt-8 mt-12">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <BarChart className="w-6 h-6 text-cyan-500" />
+                                Analytics & Reports
+                            </h2>
+                            <p className="text-gray-600 mb-6">Comprehensive data insights powered by IMS's Hybrid Intelligence Strategy.</p>
+                            <ul className="space-y-2 text-sm text-gray-600 list-disc ml-5">
+                                <li><strong>Predictive Risk Scores:</strong> Our algorithms automatically surface projects that are likely to miss deadines.</li>
+                                <li><strong>Performance Metrics:</strong> Visualize task completion velocity, project health, and company growth trends over time.</li>
+                            </ul>
+                        </section>
+
+                        {/* Section x: File Storage & Google Drive */}
+                        <section id="documents" className="scroll-mt-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <Database className="w-6 h-6 text-indigo-500" />
+                                File Storage & Google Drive
+                            </h2>
+                            <p className="text-gray-600 mb-6">All project documents and company files are securely stored in Google Drive, directly accessed via the IMS portal.</p>
+                            <div className="space-y-4">
+                                <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                    <h4 className="font-bold text-blue-900 mb-2">Centralized Access</h4>
+                                    <p className="text-sm text-blue-800">No more scattered files. Every file attached to a project or task is mirrored in your unified Google Drive repository.</p>
+                                </div>
+                                <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                    <h4 className="font-bold text-blue-900 mb-2">Upload Requirements</h4>
+                                    <p className="text-sm text-blue-800">To maintain security and compliance, local uploads are not permitted unless an administrator has activated the Google Drive integration in Settings.</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Section x: Salary & Payroll Workflow */}
+                        <section id="payroll" className="scroll-mt-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <DollarSign className="w-6 h-6 text-green-500" />
+                                Salary & Payroll Workflow
+                            </h2>
+                            <p className="text-gray-600 mb-6">IMS automates the end-to-end salary cycle to ensure accuracy and timely payouts.</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
+                                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3"><Clock className="w-5 h-5 text-gray-600" /></div>
+                                    <h4 className="font-bold text-gray-900 mb-2">1. Automated Drafts</h4>
+                                    <p className="text-sm text-gray-600">On the configured release date, drafts are created by mapping the employee's base salary against their absences for the month.</p>
+                                </div>
+                                <div className="p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
+                                    <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3"><Users className="w-5 h-5 text-indigo-600" /></div>
+                                    <h4 className="font-bold text-gray-900 mb-2">2. HR Review</h4>
+                                    <p className="text-sm text-gray-600">HR Managers review the generated drafts, applying custom performance bonuses or manual deductions before marking them as "HR Approved".</p>
+                                </div>
+                                <div className="p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
+                                    <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3"><CheckSquare className="w-5 h-5 text-green-600" /></div>
+                                    <h4 className="font-bold text-gray-900 mb-2">3. Admin Paid & Dispatch</h4>
+                                    <p className="text-sm text-gray-600">Administrators fulfill the final verification. Once marked as "Paid", a beautifully formatted Salary Slip is automatically emailed to the employee.</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Section x: Automated Email Templates */}
+                        <section id="emails" className="scroll-mt-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                                <Mail className="w-6 h-6 text-rose-500" />
+                                Automated Email Templates
+                            </h2>
+                            <p className="text-gray-600 mb-6">Maintain clear and professional communication with 15 pre-built, editable system email templates.</p>
+                            <div className="bg-white border rounded-2xl overflow-hidden mb-6">
+                                <div className="p-4 bg-rose-50 border-b font-semibold text-rose-900">How to manage emails</div>
+                                <div className="p-6 space-y-4 text-gray-600 text-sm">
+                                    <p>Navigate to <strong>Settings -{'>'} Email Management</strong> to track outgoing emails.</p>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li><strong>Preview & Edit:</strong> Before an email is dispatched manually, a preview modal allows you to edit the Subject and Content.</li>
+                                        <li><strong>Automated Triggers:</strong> System actions like Salary Paid, Task Creation, and Project Kickoffs trigger pre-configured HTML templates automatically.</li>
+                                        <li><strong>Usage Breakdown:</strong> A pie chart visually tracks which templates are utilized the most across your company.</li>
+                                    </ul>
                                 </div>
                             </div>
                         </section>

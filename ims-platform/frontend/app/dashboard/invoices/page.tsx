@@ -11,6 +11,7 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../lib/auth-context';
 import { format } from 'date-fns';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 const STATUS_STYLES: Record<string, { badge: string; label: string; icon: any }> = {
     draft: { badge: 'badge-gray', label: 'Draft', icon: FileText },
@@ -370,6 +371,9 @@ export default function InvoicesPage() {
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
 
     function loadInvoices() {
         setLoading(true);
@@ -392,13 +396,19 @@ export default function InvoicesPage() {
         } catch { toast.error('Failed to update'); }
     }
 
-    async function deleteInvoice(id: string) {
-        if (!confirm('Delete this invoice?')) return;
+    async function handleDeleteInvoice() {
+        if (!showDeleteConfirm) return;
+        setDeleting(true);
         try {
-            await api.delete(`/api/invoices/${id}`);
+            await api.delete(`/api/invoices/${showDeleteConfirm}`);
             toast.success('Invoice deleted');
-            setInvoices(prev => prev.filter(i => i._id !== id));
-        } catch { toast.error('Failed to delete'); }
+            setInvoices(prev => prev.filter(i => i._id !== showDeleteConfirm));
+        } catch {
+            toast.error('Failed to delete');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(null);
+        }
     }
 
     const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.totalAmount, 0);
@@ -514,7 +524,7 @@ export default function InvoicesPage() {
                                                     <button onClick={() => setViewInvoice(inv)} className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-400 hover:text-indigo-600" title="View Invoice">
                                                         <Eye className="w-4 h-4" />
                                                     </button>
-                                                    <button onClick={() => deleteInvoice(inv._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600" title="Delete">
+                                                    <button onClick={() => setShowDeleteConfirm(inv._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600" title="Delete">
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -527,6 +537,17 @@ export default function InvoicesPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={!!showDeleteConfirm}
+                title="Delete Invoice"
+                message="Are you sure you want to delete this invoice? This action cannot be undone."
+                confirmText="Delete Invoice"
+                onConfirm={handleDeleteInvoice}
+                onCancel={() => setShowDeleteConfirm(null)}
+                loading={deleting}
+                variant="danger"
+            />
         </div>
     );
 }

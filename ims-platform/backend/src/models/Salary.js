@@ -12,7 +12,7 @@ const salarySchema = new mongoose.Schema(
         netSalary: { type: Number, required: true, min: 0 },
         status: {
             type: String,
-            enum: ['pending', 'approved', 'paid'],
+            enum: ['pending', 'hr_approved', 'approved', 'paid'],
             default: 'pending',
         },
         paidAt: { type: Date, default: null },

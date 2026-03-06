@@ -64,6 +64,8 @@ export interface CompanyConfig {
     authorizedSignatory: string;
     designation: string;
     signatureImage: string;
+    salaryReleaseDate?: number;
+    workingDaysPerMonth?: number;
 }
 
 interface SettingsContextType {

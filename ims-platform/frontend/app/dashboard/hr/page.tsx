@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import api from '../../../lib/api';
-import { DollarSign, Loader2, CheckCircle, Clock, AlertCircle, Plus, Printer, FileText, XCircle, X } from 'lucide-react';
+import { DollarSign, Loader2, CheckCircle, Clock, AlertCircle, Plus, Printer, FileText, XCircle, X, Mail } from 'lucide-react';
 import clsx from 'clsx';
 import GeneratePayrollModal from '../../../components/GeneratePayrollModal';
 import toast from 'react-hot-toast';
@@ -10,6 +10,7 @@ import { useAuth } from '../../../lib/auth-context';
 
 const STATUS_CONFIG: Record<string, { cls: string; icon: any }> = {
     pending: { cls: 'badge-orange', icon: Clock },
+    hr_approved: { cls: 'badge-blue', icon: CheckCircle },
     approved: { cls: 'badge-blue', icon: CheckCircle },
     paid: { cls: 'badge-green', icon: CheckCircle },
     rejected: { cls: 'badge-red', icon: AlertCircle },
@@ -379,6 +380,69 @@ function PayslipModal({ salary, onClose }: { salary: any; onClose: () => void })
     );
 }
 
+function ReviewSalaryModal({ salary, onClose, onSuccess }: { salary: any; onClose: () => void, onSuccess: () => void }) {
+    const [deductions, setDeductions] = useState<number | string>(salary.deductions || 0);
+    const [bonuses, setBonuses] = useState<number | string>(salary.bonuses || 0);
+    const [notes, setNotes] = useState(salary.notes || '');
+    const [saving, setSaving] = useState(false);
+
+    const handleApprove = async () => {
+        setSaving(true);
+        try {
+            await api.put(`/api/salary/${salary._id}/hr-approve`, {
+                deductions: Number(deductions),
+                bonuses: Number(bonuses),
+                notes
+            });
+            toast.success('Salary reviewed and HR Approved');
+            onSuccess();
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Failed to approve salary');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <h3 className="font-semibold text-gray-900">Review Salary for {salary.employeeId?.name}</h3>
+                    <button onClick={onClose}><X className="w-4 h-4 text-gray-400 hover:text-gray-600" /></button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Base Salary</p>
+                        <p className="text-xl font-bold text-gray-900">₹{salary.baseSalary?.toLocaleString()}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="label">Deductions (₹)</label>
+                            <input type="number" value={deductions} onChange={e => setDeductions(e.target.value)} className="input" min="0" />
+                        </div>
+                        <div>
+                            <label className="label">Bonuses (₹)</label>
+                            <input type="number" value={bonuses} onChange={e => setBonuses(e.target.value)} className="input" min="0" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="label">Notes / Remarks</label>
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} className="input h-20" placeholder="Optional comments about deductions or performance..." />
+                    </div>
+                </div>
+                <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={onClose} disabled={saving} className="btn-secondary">Cancel</button>
+                    <button onClick={handleApprove} disabled={saving} className="btn-primary">
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                        Approve Salary
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
 export default function HRPage() {
     const [salaries, setSalaries] = useState<any[]>([]);
     const [leaves, setLeaves] = useState<any[]>([]);
@@ -387,6 +451,7 @@ export default function HRPage() {
     const [month, setMonth] = useState(thisMonthStr());
     const [showGenerate, setShowGenerate] = useState(false);
     const [payslipSalary, setPayslipSalary] = useState<any>(null);
+    const [reviewSalary, setReviewSalary] = useState<any>(null);
     const [tab, setTab] = useState<'payroll' | 'leaves'>('payroll');
     const { user } = useAuth();
 
@@ -409,9 +474,9 @@ export default function HRPage() {
 
     async function handleApprove(id: string) {
         try {
-            await api.put(`/api/salary/${id}/approve`);
+            await api.put(`/api/salary/${id}/hr-approve`);
             toast.success('Salary approved!');
-            setSalaries(prev => prev.map(s => s._id === id ? { ...s, status: 'approved' } : s));
+            setSalaries(prev => prev.map(s => s._id === id ? { ...s, status: 'hr_approved' } : s));
         } catch { toast.error('Failed to approve'); }
     }
 
@@ -443,6 +508,7 @@ export default function HRPage() {
                 />
             )}
             {payslipSalary && <PayslipModal salary={payslipSalary} onClose={() => setPayslipSalary(null)} />}
+            {reviewSalary && <ReviewSalaryModal salary={reviewSalary} onClose={() => setReviewSalary(null)} onSuccess={() => { setReviewSalary(null); loadSalaries(); }} />}
 
             <div className="page-header flex items-center justify-between">
                 <div>
@@ -526,10 +592,15 @@ export default function HRPage() {
                                                                     <FileText className="w-3.5 h-3.5" />Payslip
                                                                 </button>
                                                                 {s.status === 'pending' && (
-                                                                    <button onClick={() => handleApprove(s._id)} className="text-xs text-blue-600 hover:underline font-medium">Approve</button>
+                                                                    <button onClick={() => setReviewSalary(s)} className="text-xs text-blue-600 hover:underline font-medium">Review</button>
                                                                 )}
-                                                                {s.status === 'approved' && (
-                                                                    <button onClick={() => handleMarkPaid(s._id)} className="text-xs text-emerald-600 hover:underline font-medium">Mark Paid</button>
+                                                                {(s.status === 'approved' || s.status === 'hr_approved') && user?.role === 'admin' && (
+                                                                    <button onClick={() => handleMarkPaid(s._id)} className="text-xs text-emerald-600 hover:underline font-medium flex items-center gap-1">
+                                                                        Mark Paid <Mail className="w-3 h-3" />
+                                                                    </button>
+                                                                )}
+                                                                {(s.status === 'approved' || s.status === 'hr_approved') && user?.role !== 'admin' && (
+                                                                    <span className="text-xs text-gray-500 italic">Awaiting Admin</span>
                                                                 )}
                                                                 {s.status === 'paid' && <span className="text-xs text-gray-400">Paid ✓</span>}
                                                             </div>

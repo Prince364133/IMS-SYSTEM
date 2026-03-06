@@ -9,6 +9,7 @@ import {
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import FileUploadModal from './FileUploadModal';
+import ConfirmModal from './ConfirmModal';
 import { useAuth } from '../lib/auth-context';
 
 interface Props {
@@ -39,6 +40,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated, onDeleted 
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [showUpload, setShowUpload] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const { user } = useAuth();
 
     // Editable fields
@@ -85,14 +87,16 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated, onDeleted 
     };
 
     const deleteTask = async () => {
-        if (!confirm('Delete this task permanently?')) return;
         setDeleting(true);
         try {
             await api.delete(`/api/tasks/${taskId}`);
             onDeleted?.(taskId);
             onClose();
+        } catch (err: any) {
+            console.error('Delete task error:', err);
         } finally {
             setDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -301,7 +305,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated, onDeleted 
                     {canEdit ? (
                         <>
                             <button
-                                onClick={deleteTask}
+                                onClick={() => setShowDeleteConfirm(true)}
                                 disabled={loading || deleting}
                                 className="btn-danger"
                             >
@@ -332,6 +336,17 @@ export default function TaskDetailModal({ taskId, onClose, onUpdated, onDeleted 
                     onSuccess={() => { }}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                title="Delete Task"
+                message="Are you sure you want to delete this task permanently? This action cannot be undone."
+                confirmText="Delete Task"
+                onConfirm={deleteTask}
+                onCancel={() => setShowDeleteConfirm(false)}
+                loading={deleting}
+                variant="danger"
+            />
         </div>
     );
 }

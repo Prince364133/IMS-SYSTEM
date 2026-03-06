@@ -10,7 +10,7 @@ import {
     LayoutDashboard, FolderKanban, CheckSquare, Users, Building2,
     Calendar, MessageSquare, BarChart3, Briefcase, Target, Star,
     Settings, LogOut, Loader2, ChevronDown, DollarSign, FileText, BookOpen, Sparkles,
-    CalendarDays, Clock, Receipt, FilePlus2, HelpCircle
+    CalendarDays, Clock, Receipt, FilePlus2, HelpCircle, Monitor, Globe
 } from 'lucide-react';
 import clsx from 'clsx';
 import NotificationsPanel from '../../components/NotificationsPanel';
@@ -29,7 +29,7 @@ const navigation = [
     { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarDays, roles: ['admin', 'manager', 'hr', 'employee'] },
     { name: 'Time Tracking', href: '/dashboard/timetracking', icon: Clock, roles: ['admin', 'manager', 'hr', 'employee'] },
     { name: 'Expenses', href: '/dashboard/expenses', icon: Receipt, roles: ['admin', 'manager', 'hr', 'employee'] },
-    { name: 'Inventory', href: '/dashboard/inventory', icon: Building2, roles: ['admin', 'hr', 'manager'] },
+    { name: 'Digital Assets', href: '/dashboard/assets', icon: Globe, roles: ['admin', 'hr', 'manager'] },
     { name: 'Invoices', href: '/dashboard/invoices', icon: FilePlus2, roles: ['admin', 'manager', 'hr'] },
     { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare, roles: ['admin', 'manager', 'hr', 'employee', 'client'] },
     { name: 'AI Assistant', href: '/dashboard/ai', icon: Sparkles, roles: ['admin', 'manager', 'hr', 'employee'] },

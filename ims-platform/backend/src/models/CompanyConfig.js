@@ -46,6 +46,10 @@ const companyConfigSchema = new mongoose.Schema(
         // Chat Settings
         employeeClientChatAllowed: { type: Boolean, default: true },
 
+        // Payroll Settings
+        salaryReleaseDate: { type: Number, default: 1 }, // 1st to 28th
+        workingDaysPerMonth: { type: Number, default: 22 },
+
         // Email Branding Additional
         emailFooterText: { type: String, default: '' },
         copyrightText: { type: String, default: '' },

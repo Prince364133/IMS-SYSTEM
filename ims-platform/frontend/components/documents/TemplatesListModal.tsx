@@ -10,6 +10,8 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import { useSettings } from '../../lib/settings-context';
+import { generatePDF } from '../../lib/pdf-utils';
+import { generateDOCX } from '../../lib/docx-utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
@@ -27,14 +29,19 @@ function ExportBar({
     driveConfigured,
     onSaveToDrive,
     saving,
+    onDownload,
+    onSendEmail,
 }: {
     htmlContent: string;
     title: string;
     driveConfigured: boolean;
     onSaveToDrive: () => void;
     saving: boolean;
+    onDownload: (format: 'pdf' | 'docx') => void;
+    onSendEmail: () => void;
 }) {
     const slug = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const [showDropdown, setShowDropdown] = useState(false);
 
     function downloadHTML() {
         const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -58,12 +65,35 @@ function ExportBar({
 
     return (
         <div className="flex flex-wrap items-center gap-2">
-            {/* Always-visible Download HTML */}
+            {/* Export Dropdown */}
+            <div className="relative">
+                <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:text-indigo-700 transition-colors"
+                >
+                    <Download className="w-3.5 h-3.5" /> Export <ChevronDown className={clsx('w-3 h-3 transition-transform', showDropdown && 'rotate-180')} />
+                </button>
+
+                {showDropdown && (
+                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50">
+                        <button onClick={() => { onDownload('pdf'); setShowDropdown(false); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 text-left font-medium">
+                            <FileText className="w-3.5 h-3.5 text-rose-500" /> Download as PDF
+                        </button>
+                        <button onClick={() => { onDownload('docx'); setShowDropdown(false); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 text-left font-medium">
+                            <FileText className="w-3.5 h-3.5 text-blue-500" /> Download as DOCX
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Send via Email */}
             <button
-                onClick={downloadHTML}
+                onClick={onSendEmail}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:text-indigo-700 transition-colors"
             >
-                <Download className="w-3.5 h-3.5" /> Download HTML
+                <Mail className="w-3.5 h-3.5 text-indigo-500" /> Send via Email
             </button>
 
             {/* Print / Save as PDF */}
@@ -129,15 +159,31 @@ function TemplateEditor({
     const [showUserPicker, setShowUserPicker] = useState(false);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [preview, setPreview] = useState(false);
+    const [sendingEmail, setSendingEmail] = useState(false);
+    const [emailRecipient, setEmailRecipient] = useState('');
+    const [emailMessage, setEmailMessage] = useState('');
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [emailFormat, setEmailFormat] = useState<'pdf' | 'docx'>('pdf');
 
     // Generate live branded HTML from template
-    const liveHtml = template.generate({ ...brand, /* pass any overrides if needed */ });
+    const liveHtml = template.generate({ ...brand });
+
+    // Auto-fill recipient when modal opens or tagged users change
+    useEffect(() => {
+        if (showEmailModal && taggedUsers.length > 0 && !emailRecipient) {
+            setEmailRecipient(taggedUsers[0].email || '');
+            setEmailMessage(`Hi ${taggedUsers[0].name || ''},\n\nPlease find the attached ${title} for your reference.`);
+        }
+    }, [showEmailModal, taggedUsers, title, emailRecipient]);
 
     useEffect(() => {
         setLoadingUsers(true);
         api.get('/api/users?limit=200')
             .then(({ data }) => setAllUsers(data.users || data || []))
-            .catch(() => { })
+            .catch((err) => {
+                console.error('Failed to fetch users:', err);
+                toast.error('Could not load users for tagging');
+            })
             .finally(() => setLoadingUsers(false));
     }, []);
 
@@ -151,13 +197,75 @@ function TemplateEditor({
         );
     };
 
+    async function handleDownload(format: 'pdf' | 'docx') {
+        const loading = toast.loading(`Generating ${format.toUpperCase()}...`);
+        try {
+            let blob: Blob;
+            if (format === 'pdf') {
+                blob = await generatePDF(liveHtml);
+            } else {
+                blob = await generateDOCX(title, liveHtml);
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${format}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success(`Downloaded as ${format.toUpperCase()}`, { id: loading });
+        } catch (err) {
+            toast.error('Failed to generate file', { id: loading });
+        }
+    }
+
+    async function handleSendEmail() {
+        if (!emailRecipient.trim()) return toast.error('Please enter a recipient email.');
+        setSendingEmail(true);
+        const loading = toast.loading(`Preparing ${emailFormat.toUpperCase()} and sending email...`);
+        try {
+            let blob: Blob;
+            if (emailFormat === 'pdf') {
+                blob = await generatePDF(liveHtml);
+            } else {
+                blob = await generateDOCX(title, liveHtml);
+            }
+
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = async () => {
+                const base64data = reader.result as string;
+                try {
+                    await api.post('/api/email/send-document', {
+                        to: emailRecipient,
+                        name: taggedUsers.find(u => u.email === emailRecipient)?.name || 'Recipient',
+                        documentName: title,
+                        message: emailMessage,
+                        fileData: base64data,
+                        fileName: `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${emailFormat}`
+                    });
+                    toast.success('Email sent successfully!', { id: loading });
+                    setShowEmailModal(false);
+                    setEmailRecipient('');
+                    setEmailMessage('');
+                } catch (err: any) {
+                    toast.error(err?.response?.data?.error || 'Failed to send email', { id: loading });
+                } finally {
+                    setSendingEmail(false);
+                }
+            };
+        } catch (err) {
+            toast.error('Failed to prepare document', { id: loading });
+            setSendingEmail(false);
+        }
+    }
+
     async function handleSaveToDrive() {
         if (!title.trim()) return toast.error('Please provide a document title.');
         setSaving(true);
+        const loading = toast.loading('Converting to PDF and saving...');
         try {
-            const htmlToSave = liveHtml;
-            const blob = new Blob([htmlToSave], { type: 'text/html' });
-            const file = new File([blob], `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`, { type: 'text/html' });
+            const pdfBlob = await generatePDF(liveHtml);
+            const file = new File([pdfBlob], `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`, { type: 'application/pdf' });
 
             const formData = new FormData();
             formData.append('file', file);
@@ -172,10 +280,10 @@ function TemplateEditor({
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            toast.success(driveConfigured ? '✅ Saved to Google Drive!' : '✅ Document saved to cloud storage!');
+            toast.success(driveConfigured ? '✅ Saved to Google Drive!' : '✅ Saved to cloud storage!', { id: loading });
             onSuccess();
         } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Failed to save document');
+            toast.error(err?.response?.data?.error || 'Failed to save document', { id: loading });
         } finally {
             setSaving(false);
         }
@@ -320,9 +428,77 @@ function TemplateEditor({
                                 driveConfigured={driveConfigured}
                                 onSaveToDrive={handleSaveToDrive}
                                 saving={saving}
+                                onDownload={handleDownload}
+                                onSendEmail={() => setShowEmailModal(true)}
                             />
                         </div>
                     </div>
+
+                    {/* Email Modal */}
+                    {showEmailModal && (
+                        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold text-gray-900">Send via Email</h3>
+                                    <button onClick={() => setShowEmailModal(false)} className="text-gray-400 hover:text-gray-600">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="label">Recipient Email</label>
+                                        <input
+                                            type="email"
+                                            value={emailRecipient}
+                                            onChange={e => setEmailRecipient(e.target.value)}
+                                            placeholder="e.g. client@example.com"
+                                            className="input"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label">Message (Optional)</label>
+                                        <textarea
+                                            value={emailMessage}
+                                            onChange={e => setEmailMessage(e.target.value)}
+                                            placeholder="Write a brief message..."
+                                            className="input min-h-[80px]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label">Attachment Format</label>
+                                        <div className="flex gap-2">
+                                            {(['pdf', 'docx'] as const).map(f => (
+                                                <button
+                                                    key={f}
+                                                    onClick={() => setEmailFormat(f)}
+                                                    className={clsx(
+                                                        'flex-1 py-2 text-xs font-bold rounded-xl border transition-all',
+                                                        emailFormat === f
+                                                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                                                            : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-300'
+                                                    )}
+                                                >
+                                                    {f.toUpperCase()}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleSendEmail}
+                                        disabled={sendingEmail}
+                                        className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 group"
+                                    >
+                                        {sendingEmail ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Mail className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                                        )}
+                                        {sendingEmail ? 'Sending...' : 'Send Attachment'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Right: Preview */}
                     <div className="flex-1 bg-gray-100 overflow-auto p-6 min-h-0">

@@ -19,6 +19,7 @@ const CalendarEvent = require('../models/CalendarEvent');
 const InventoryTransaction = require('../models/InventoryTransaction');
 const Milestone = require('../models/Milestone');
 const Review = require('../models/Review');
+const Asset = require('../models/Asset');
 
 exports.getSettings = async (req, res) => {
     try {
@@ -293,7 +294,7 @@ exports.clearDatabase = async (req, res) => {
         const modelsToClear = [
             Attendance, AuditLog, Task, Project, Client, Expense, Salary,
             Leave, Notification, Chat, Document, TimeLog, Invoice, Goal,
-            Job, Application, CalendarEvent, InventoryTransaction, Milestone, Review
+            Job, Application, CalendarEvent, InventoryTransaction, Milestone, Review, Asset
         ];
 
         let query = {};

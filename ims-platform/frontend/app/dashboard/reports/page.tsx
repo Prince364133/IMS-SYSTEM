@@ -4,12 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '../../../lib/api';
 import {
     BarChart2, Download, Users, Calendar, DollarSign, FolderKanban,
-    Loader2, TrendingUp, TrendingDown, CheckCircle2, Clock, Package,
-    Receipt, Target, Star, AlertCircle, Activity, UserCheck
+    TrendingUp, TrendingDown, CheckCircle2, Clock, Package,
+    Receipt, Target, Star, AlertCircle, Activity, UserCheck,
+    Globe, Server
 } from 'lucide-react';
+import { SkeletonStatsCard, SkeletonTable } from '../../../components/Skeleton';
 import clsx from 'clsx';
 
-type ReportTab = 'attendance' | 'payroll' | 'projects' | 'employees' | 'expenses' | 'inventory' | 'leaves' | 'goals';
+type ReportTab = 'attendance' | 'payroll' | 'projects' | 'employees' | 'expenses' | 'assets' | 'leaves' | 'goals';
 
 function downloadCSV(headers: string[], rows: (string | number | null | undefined)[][], filename: string) {
     const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -65,7 +67,7 @@ export default function ReportsPage() {
     const [projects, setProjects] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
-    const [inventory, setInventory] = useState<any[]>([]);
+    const [assets, setAssets] = useState<any[]>([]);
     const [leaves, setLeaves] = useState<any[]>([]);
     const [goals, setGoals] = useState<any[]>([]);
 
@@ -90,9 +92,9 @@ export default function ReportsPage() {
             } else if (tab === 'expenses') {
                 const { data } = await api.get('/api/expenses', { params: { month, limit: 200 } });
                 setExpenses(data.expenses || []);
-            } else if (tab === 'inventory') {
-                const { data } = await api.get('/api/items', { params: { limit: 200 } });
-                setInventory(data.items || []);
+            } else if (tab === 'assets') {
+                const { data } = await api.get('/api/assets', { params: { limit: 200 } });
+                setAssets(data.assets || []);
             } else if (tab === 'leaves') {
                 const { data } = await api.get('/api/leaves', { params: { limit: 200 } });
                 setLeaves(data.leaves || []);
@@ -115,7 +117,7 @@ export default function ReportsPage() {
         { key: 'projects', label: 'Projects', icon: FolderKanban },
         { key: 'goals', label: 'Goals', icon: Target },
         { key: 'expenses', label: 'Expenses', icon: Receipt },
-        { key: 'inventory', label: 'Inventory', icon: Package },
+        { key: 'assets', label: 'Digital Assets', icon: Globe },
         { key: 'employees', label: 'Employees', icon: Users },
     ];
 
@@ -162,11 +164,11 @@ export default function ReportsPage() {
                 goals.map(g => [g.title, g.category, g.assignedTo?.name || g.createdBy?.name || '', g.status, g.progress, g.dueDate ? new Date(g.dueDate).toLocaleDateString() : '', g.priority]),
                 `goals_report.csv`
             );
-        } else if (tab === 'inventory') {
+        } else if (tab === 'assets') {
             downloadCSV(
-                ['Item', 'Category', 'SKU', 'Stock', 'Min Stock', 'Price', 'Status'],
-                inventory.map(i => [i.name, i.category, i.sku, i.stock, i.minStock, i.price, i.stock <= i.minStock ? 'Low Stock' : 'OK']),
-                `inventory_report.csv`
+                ['Asset', 'Type', 'Provider', 'Renewal Date', 'Cost', 'Billing', 'Status', 'URL'],
+                assets.map(a => [a.name, a.type, a.provider, a.renewalDate ? new Date(a.renewalDate).toLocaleDateString() : '', a.cost, a.billingCycle, a.status, a.url]),
+                `digital_assets_report.csv`
             );
         }
     }
@@ -177,7 +179,7 @@ export default function ReportsPage() {
     const expensePending = expenses.filter(e => e.status === 'pending');
     const leavePending = leaves.filter(l => l.status === 'pending');
     const leaveApproved = leaves.filter(l => l.status === 'approved');
-    const lowStock = inventory.filter(i => i.stock <= (i.minStock || 0));
+    const assetCostTotal = assets.reduce((a, as) => a + (as.cost || 0), 0);
     const deptCounts = employees.reduce((acc: Record<string, number>, e) => { const d = e.department || 'Unassigned'; acc[d] = (acc[d] || 0) + 1; return acc; }, {});
 
     return (
@@ -226,8 +228,13 @@ export default function ReportsPage() {
             )}
 
             {loading ? (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <SkeletonStatsCard key={i} />
+                        ))}
+                    </div>
+                    <SkeletonTable rows={10} columns={8} />
                 </div>
             ) : (
                 <>
@@ -515,42 +522,35 @@ export default function ReportsPage() {
                         </div>
                     )}
 
-                    {/* ── INVENTORY ─────────────────────────────────────────────────────── */}
-                    {tab === 'inventory' && (
+                    {/* ── DIGITAL ASSETS ─────────────────────────────────────────────────── */}
+                    {tab === 'assets' && (
                         <div>
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                                <StatCard label="Total Items" value={inventory.length} icon={Package} color="bg-indigo-50 text-indigo-600" />
-                                <StatCard label="Low Stock" value={lowStock.length} icon={AlertCircle} color="bg-red-50 text-red-600" />
-                                <StatCard label="Total Stock Value" value={`₹${inventory.reduce((a, i) => a + ((i.price || 0) * (i.stock || 0)), 0).toLocaleString()}`} icon={DollarSign} color="bg-emerald-50 text-emerald-600" />
-                                <StatCard label="Categories" value={new Set(inventory.map(i => i.category)).size} icon={BarChart2} color="bg-purple-50 text-purple-600" />
+                                <StatCard label="Total Assets" value={assets.length} icon={Globe} color="bg-indigo-50 text-indigo-600" />
+                                <StatCard label="Total Infrastructure Cost" value={`₹${assetCostTotal.toLocaleString()}`} icon={DollarSign} color="bg-emerald-50 text-emerald-600" />
+                                <StatCard label="Active Domains" value={assets.filter(a => a.type === 'domain').length} icon={Globe} color="bg-blue-50 text-blue-600" />
+                                <StatCard label="Servers" value={assets.filter(a => a.type === 'server').length} icon={Server} color="bg-purple-50 text-purple-600" />
                             </div>
-                            {lowStock.length > 0 && (
-                                <div className="flex items-center gap-2 p-3.5 mb-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">
-                                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                    <span><strong>{lowStock.length} items</strong> are below minimum stock levels and need restocking.</span>
-                                </div>
-                            )}
                             <div className="card">
-                                {inventory.length === 0 ? <EmptyState icon={Package} message="No inventory items found." /> : (
+                                {assets.length === 0 ? <EmptyState icon={Globe} message="No digital assets found." /> : (
                                     <div className="table-wrapper">
                                         <table className="table">
-                                            <thead><tr><th>Item</th><th>SKU</th><th>Category</th><th>Stock</th><th>Min Stock</th><th>Price</th><th>Value</th><th>Status</th></tr></thead>
+                                            <thead><tr><th>Asset</th><th>Type</th><th>Provider</th><th>Renewal</th><th>Cost</th><th>Billing</th><th>Status</th></tr></thead>
                                             <tbody>
-                                                {inventory.map((i: any) => {
-                                                    const isLow = i.stock <= (i.minStock || 0);
-                                                    return (
-                                                        <tr key={i._id}>
-                                                            <td><p className="font-medium text-gray-900">{i.name}</p></td>
-                                                            <td className="text-xs text-gray-400 font-mono">{i.sku || '—'}</td>
-                                                            <td><span className="badge badge-blue capitalize">{i.category || '—'}</span></td>
-                                                            <td><span className={clsx('badge', isLow ? 'badge-red' : 'badge-green')}>{i.stock}</span></td>
-                                                            <td className="text-sm text-gray-500">{i.minStock || 0}</td>
-                                                            <td className="text-sm text-gray-700">₹{(i.price || 0).toLocaleString()}</td>
-                                                            <td className="font-medium text-gray-900">₹{((i.price || 0) * (i.stock || 0)).toLocaleString()}</td>
-                                                            <td><span className={clsx('badge', isLow ? 'badge-red' : 'badge-green')}>{isLow ? 'Low Stock' : 'OK'}</span></td>
-                                                        </tr>
-                                                    );
-                                                })}
+                                                {assets.map((a: any) => (
+                                                    <tr key={a._id}>
+                                                        <td>
+                                                            <p className="font-medium text-gray-900">{a.name}</p>
+                                                            {a.url && <p className="text-xs text-gray-400 truncate max-w-[150px]">{a.url}</p>}
+                                                        </td>
+                                                        <td><span className="badge badge-blue capitalize">{a.type}</span></td>
+                                                        <td className="text-sm text-gray-600">{a.provider || '—'}</td>
+                                                        <td className="text-sm text-gray-500">{a.renewalDate ? new Date(a.renewalDate).toLocaleDateString() : 'Manual'}</td>
+                                                        <td className="text-sm text-gray-700 font-medium">₹{(a.cost || 0).toLocaleString()}</td>
+                                                        <td className="text-xs text-gray-400 capitalize">{a.billingCycle}</td>
+                                                        <td><span className={clsx('badge', a.status === 'active' ? 'badge-green' : 'badge-orange')}>{a.status}</span></td>
+                                                    </tr>
+                                                ))}
                                             </tbody>
                                         </table>
                                     </div>

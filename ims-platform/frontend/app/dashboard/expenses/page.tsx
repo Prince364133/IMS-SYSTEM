@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../lib/auth-context';
 import { format } from 'date-fns';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 const CATEGORIES = ['travel', 'food', 'accommodation', 'equipment', 'software', 'training', 'other'];
 const STATUS_STYLES: Record<string, string> = {
@@ -105,6 +106,8 @@ export default function ExpensesPage() {
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
     const [filterStatus, setFilterStatus] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const isHR = user?.role === 'admin' || user?.role === 'hr';
 
     function loadExpenses() {
@@ -126,13 +129,19 @@ export default function ExpensesPage() {
         } catch { toast.error('Failed to update'); }
     }
 
-    async function deleteExpense(id: string) {
-        if (!confirm('Delete this expense?')) return;
+    async function handleDeleteExpense() {
+        if (!showDeleteConfirm) return;
+        setDeleting(true);
         try {
-            await api.delete(`/api/expenses/${id}`);
+            await api.delete(`/api/expenses/${showDeleteConfirm}`);
             toast.success('Deleted');
-            setExpenses(prev => prev.filter(e => e._id !== id));
-        } catch { toast.error('Failed to delete'); }
+            setExpenses(prev => prev.filter(e => e._id !== showDeleteConfirm));
+        } catch {
+            toast.error('Failed to delete');
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(null);
+        }
     }
 
     const totalPending = expenses.filter(e => e.status === 'pending').reduce((s, e) => s + e.amount, 0);
@@ -248,7 +257,7 @@ export default function ExpensesPage() {
                                             </td>
                                         )}
                                         <td>
-                                            <button onClick={() => deleteExpense(exp._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600">
+                                            <button onClick={() => setShowDeleteConfirm(exp._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </td>
@@ -259,6 +268,17 @@ export default function ExpensesPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={!!showDeleteConfirm}
+                title="Delete Expense"
+                message="Are you sure you want to delete this expense claim?"
+                confirmText="Delete"
+                onConfirm={handleDeleteExpense}
+                onCancel={() => setShowDeleteConfirm(null)}
+                loading={deleting}
+                variant="danger"
+            />
         </div>
     );
 }

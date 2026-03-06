@@ -24,6 +24,7 @@ export default function CEODashboard() {
     const [taskVelocity, setTaskVelocity] = useState<any[]>([]);
     const [projectHealth, setProjectHealth] = useState<any[]>([]);
     const [ceoInsights, setCeoInsights] = useState<any>(null);
+    const [prevMonthProjects, setPrevMonthProjects] = useState<number>(0);
 
     useEffect(() => {
         if (!authLoading && user && !['admin', 'manager'].includes(user.role)) {
@@ -40,6 +41,9 @@ export default function CEODashboard() {
         ]).then(([{ data: dash }, { data: taskData }, { data: projData }, { data: insightsData }]) => {
             setStats(dash);
             setCeoInsights(insightsData);
+            // Calculate month-over-month changes for Active Projects
+            const prevActive = insightsData?.taskVelocity ? (dash?.projects?.total || 0) - (dash?.projects?.active || 0) : 0;
+            setPrevMonthProjects(dash?.projects?.prevMonthActive ?? 0);
 
             // Build task velocity from real task statuses (fallback if ceoInsights fails)
             const tasks = taskData.tasks || [];
@@ -140,7 +144,7 @@ export default function CEODashboard() {
                     </div>
                     <div className="mt-4 flex items-center text-sm">
                         <span className="text-emerald-600 font-medium flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> {ceoInsights?.retentionRate || 100}%
+                            <TrendingUp className="w-3 h-3" /> {ceoInsights?.retentionRate ?? 0}%
                         </span>
                         <span className="text-gray-400 ml-2">Retention Rate</span>
                     </div>
@@ -158,7 +162,7 @@ export default function CEODashboard() {
                     </div>
                     <div className="mt-4 flex items-center text-sm">
                         <span className="text-emerald-600 font-medium flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> +2
+                            <TrendingUp className="w-3 h-3" /> {stats?.projects?.active > prevMonthProjects ? '+' : ''}{(stats?.projects?.active || 0) - prevMonthProjects}
                         </span>
                         <span className="text-gray-400 ml-2">from last month</span>
                     </div>
@@ -176,7 +180,7 @@ export default function CEODashboard() {
                     </div>
                     <div className="mt-4 flex items-center text-sm">
                         <span className="text-emerald-600 font-medium flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> {ceoInsights?.satisfactionScore || 100}%
+                            <TrendingUp className="w-3 h-3" /> {ceoInsights?.satisfactionScore ?? 0}%
                         </span>
                         <span className="text-gray-400 ml-2">Satisfaction Score</span>
                     </div>
@@ -280,7 +284,7 @@ export default function CEODashboard() {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-3xl font-black text-gray-900">{stats?.projects?.active || 18}</span>
+                            <span className="text-3xl font-black text-gray-900">{stats?.projects?.active ?? 0}</span>
                             <span className="text-xs font-semibold text-gray-400">Total Active</span>
                         </div>
                     </div>

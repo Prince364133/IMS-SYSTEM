@@ -11,6 +11,8 @@
 - **📧 Dynamic Email Engine**: Automated welcome, project assignment, and salary generation emails with fully configurable SMTP/Resend.
 - **📊 Real-time Dashboard**: Live status tracking and weekly growth analytics.
 - **📖 Integrated Help Center**: Complete interactive documentation and system guides built directly into the dashboard.
+- **💰 Custom Salary Workflow**: Automated drafting, HR reviews, and automated dispatch of salary slips based on dynamic absence calculations.
+- **📂 Secure Document Management**: Centralized file storage with forced Google Drive integration for strict compliance.
 - **🧹 Bulk Data Management**: Advanced administrative tools for full system reset or date-range data purging.
 
 ## 🏗️ Project Structure
