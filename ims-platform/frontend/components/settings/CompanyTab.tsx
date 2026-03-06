@@ -32,7 +32,9 @@ export default function CompanyTab() {
         ifscCode: '',
         authorizedSignatory: '',
         designation: '',
-        signatureImage: ''
+        signatureImage: '',
+        salaryReleaseDate: 1,
+        workingDaysPerMonth: 22
     });
 
     useEffect(() => {

@@ -40,7 +40,8 @@ export async function generateDOCX(title: string, html: string): Promise<Blob> {
                     }),
                 });
             });
-            children.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE }, spacing: { after: 200 } }));
+            children.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+            children.push(new Paragraph({ text: '', spacing: { after: 200 } }));
         }
     });
 
