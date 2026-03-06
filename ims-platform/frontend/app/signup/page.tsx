@@ -39,6 +39,11 @@ function SignupForm() {
             const res = await fetch(`${apiUrl}/api/setup/status`);
             const data = await res.json();
             setIsConfigured(data.isConfigured);
+
+            if (data.isConfigured && data.adminExists) {
+                toast.success('System already configured. Redirecting to login...');
+                router.push('/login');
+            }
         } catch (e) {
             console.error('Failed to fetch setup status');
         } finally {

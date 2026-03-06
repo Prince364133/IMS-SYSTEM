@@ -25,26 +25,7 @@ const seed = async () => {
             console.log('ℹ️ Settings already exist, skipping...');
         }
 
-        // 2. Seed Default Admin
-        const adminEmail = process.env.INITIAL_ADMIN_EMAIL || 'admin@example.com';
-        const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'admin123';
-
-        let admin = await User.findOne({ email: adminEmail.toLowerCase() });
-        if (!admin) {
-            admin = await User.create({
-                name: 'System Admin',
-                email: adminEmail.toLowerCase(),
-                password: adminPassword,
-                role: 'admin',
-                department: 'Administration',
-                position: 'Head of Operations',
-                isActive: true
-            });
-            console.log(`✅ Default admin created: ${adminEmail}`);
-            console.log(`🔑 Temporary Password: ${adminPassword}`);
-        } else {
-            console.log(`ℹ️ Admin ${adminEmail} already exists, skipping...`);
-        }
+        console.log('🌱 System settings initialized.');
 
         console.log('\n✨ Seeding completed successfully!');
         process.exit(0);

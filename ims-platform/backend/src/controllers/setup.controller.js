@@ -6,13 +6,24 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 
-exports.getSetupStatus = (req, res) => {
-    // 0 = disconnected, 1 = connected
-    const isConnected = mongoose.connection.readyState === 1;
-    res.status(200).json({
-        success: true,
-        isConfigured: isConnected
-    });
+exports.getSetupStatus = async (req, res) => {
+    try {
+        const isConnected = mongoose.connection.readyState === 1;
+        const User = require('../models/User');
+        const adminExists = isConnected ? await User.exists({ role: 'admin' }) : false;
+
+        res.status(200).json({
+            success: true,
+            isConfigured: isConnected,
+            adminExists: !!adminExists
+        });
+    } catch (err) {
+        res.status(200).json({
+            success: true,
+            isConfigured: mongoose.connection.readyState === 1,
+            adminExists: false
+        });
+    }
 };
 
 exports.configureDatabase = async (req, res, next) => {
