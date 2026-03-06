@@ -7,11 +7,12 @@ const { totp } = require('otplib');
 const qrcode = require('qrcode');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Settings = require('../models/Settings');
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 exports.register = async (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, roles } = req.body;
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'Name, email, and password are required' });
         }
@@ -19,29 +20,37 @@ exports.register = async (req, res, next) => {
         const exists = await User.findOne({ email: email.toLowerCase() });
         if (exists) return res.status(409).json({ error: 'Email already registered' });
 
+        // Check if ANY admin exists
         const adminExists = await User.exists({ roles: 'admin' });
-        const userCount = await User.countDocuments();
 
         // Multi-role handling
         let safeRoles = (roles && Array.isArray(roles)) ? roles : [(role || 'employee')];
 
         // Validation & Normalization
         const validRoles = ['admin', 'manager', 'hr', 'employee', 'client'];
-        safeRoles = safeRoles.filter(r => validRoles.includes(r));
+        safeRoles = [...new Set(safeRoles.filter(r => validRoles.includes(r)))];
         if (safeRoles.length === 0) safeRoles = ['employee'];
 
         // Security check
         const isGrantingHigherPrivilage = safeRoles.some(r => ['admin', 'hr'].includes(r));
 
         if (!adminExists) {
-            // First user is ALWAYS admin
+            // First user is ALWAYS admin if no admin exists in the system
             safeRoles = ['admin'];
         } else if (isGrantingHigherPrivilage && req.user?.role !== 'admin') {
-            // Only admin can grant admin/hr
+            // Only logged-in admin can grant admin/hr to others
+            // If not logged in as admin (e.g. public signup), force to employee
             safeRoles = ['employee'];
         }
 
-        const user = await User.create({ name, email, password, roles: safeRoles });
+        // Auto-generate employeeId if it's an employee/manager/hr and not provided
+        let employeeId = req.body.employeeId;
+        if (!employeeId && safeRoles.some(r => ['employee', 'manager', 'hr'].includes(r))) {
+            const count = await User.countDocuments();
+            employeeId = `EMP-${String(count + 1).padStart(4, '0')}`;
+        }
+
+        const user = await User.create({ name, email, password, roles: safeRoles, employeeId });
         const token = signAccessToken(user._id);
         const refreshToken = signRefreshToken(user._id);
 
@@ -56,8 +65,10 @@ exports.register = async (req, res, next) => {
         if (req.user) {
             const Notification = require('../models/Notification');
             const { getIo } = require('../sockets');
-            const subject = encodeURIComponent('Welcome to Internal Management System');
-            const body = encodeURIComponent(`Hi ${user.name},\n\nYour account has been created.\nEmail: ${user.email}\nPassword: ${password}\n\nLogin at: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+            const settings = await Settings.findOne();
+            const companyName = settings?.companyName || 'Internal Management System';
+            const subject = encodeURIComponent(`Welcome to ${companyName}`);
+            const body = encodeURIComponent(`Hi ${user.name},\n\nYour account has been created.\nEmail: ${user.email}\nPassword: ${password}\n\nLogin at: ${process.env.CLIENT_URL}`);
             const actionUrl = `mailto:${user.email}?subject=${subject}&body=${body}`;
 
             const notification = await Notification.create({
@@ -205,8 +216,10 @@ exports.changePassword = async (req, res, next) => {
 // ─── MFA Setup ────────────────────────────────────────────────────────────────
 exports.setupMFA = async (req, res, next) => {
     try {
+        const settings = await Settings.findOne();
+        const companyName = settings?.companyName || 'Internal Management System';
         const secret = totp.generateSecret();
-        const uri = totp.keyuri(req.user.email, 'Internal Management System', secret);
+        const uri = totp.keyuri(req.user.email, companyName, secret);
         const qrCode = await qrcode.toDataURL(uri);
         res.json({ secret, qrCode, provisioningUri: uri });
     } catch (err) { next(err); }

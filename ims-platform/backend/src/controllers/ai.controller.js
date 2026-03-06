@@ -6,6 +6,9 @@ const Invoice = require('../models/Invoice');
 const Leave = require('../models/Leave');
 const { Job, Application } = require('../models/Job');
 const Attendance = require('../models/Attendance');
+const Document = require('../models/Document');
+const googleDriveService = require('../services/google-drive.service');
+const axios = require('axios');
 
 exports.getDashboardInsights = async (req, res, next) => {
     try {
@@ -94,6 +97,67 @@ exports.chatWithAI = async (req, res, next) => {
 
         const reply = await AIService.getInsights(finalPrompt);
         return res.json({ reply });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.analyzeDocument = async (req, res, next) => {
+    try {
+        const { documentId, message, summarizeOnly } = req.body;
+        const doc = await Document.findById(documentId);
+        if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+        let content = "";
+
+        if (doc.storageType === 'google_drive') {
+            try {
+                content = await googleDriveService.getFileContent(doc.fileId);
+            } catch (err) {
+                console.warn('Failed to fetch from Drive, falling back to summary of meta:', err.message);
+                content = `Document Name: ${doc.name}\nDescription: ${doc.description || 'None'}`;
+            }
+        } else if (doc.fileUrl && (doc.fileUrl.endsWith('.html') || doc.fileType === 'link')) {
+            try {
+                // If it's a web link or uploaded HTML, try to fetch it
+                const response = await axios.get(doc.fileUrl);
+                content = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                // Strip HTML tags for cleaner AI input
+                content = content.replace(/<[^>]*>?/gm, ' ').slice(0, 10000);
+            } catch (err) {
+                content = `Document Name: ${doc.name}\nDescription: ${doc.description || 'None'}`;
+            }
+        } else {
+            content = `Document Name: ${doc.name}\nDescription: ${doc.description || 'None'}\nType: ${doc.fileType}`;
+        }
+
+        const prompt = summarizeOnly
+            ? `Please provide a concise, professional summary (3-5 bullet points) of the following document content:\n\n${content}`
+            : `You are a document assistant. Based on the following document content, answer the user's question accurately.\n\nDOCUMENT CONTENT:\n${content}\n\nUSER QUESTION: ${message}`;
+
+        const reply = await AIService.getInsights(prompt);
+        return res.json({ reply });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.generateEmailDraft = async (req, res, next) => {
+    try {
+        const { idea, recipientName, tone = 'professional', context = '' } = req.body;
+
+        const prompt = `You are an expert business communicator and professional email writer. 
+Your goal is to draft a high-quality email based on the user's requirements.
+
+RECIPIENT: ${recipientName || 'Valued Recipient'}
+TONE: ${tone}
+CONTEXT/GOAL: ${idea}
+ADDITIONAL CONTEXT: ${context}
+
+Draft the email with a clear subject line and a professional body. Use [Placeholder] for any missing info. No extra talk, just the email draft.`;
+
+        const draft = await AIService.getInsights(prompt);
+        return res.json({ draft });
     } catch (err) {
         next(err);
     }

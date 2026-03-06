@@ -90,8 +90,8 @@ function Sidebar() {
 
             {/* User section */}
             <div className="p-4 border-t border-gray-100">
-                <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                <Link href="/dashboard/profile/me" className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                         {user?.photoUrl ? (
                             <img src={user.photoUrl} alt={user.name} className="w-full h-full rounded-full object-cover" />
                         ) : (
@@ -99,15 +99,15 @@ function Sidebar() {
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{user?.name}</p>
                         <p className="text-xs text-gray-400 truncate capitalize">{user?.role}</p>
                     </div>
-                    <button onClick={logout} title="Logout"
-                        className="text-gray-400 hover:text-red-500 transition-colors"
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); logout(); }} title="Logout"
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
                     >
                         <LogOut className="w-4 h-4" />
                     </button>
-                </div>
+                </Link>
             </div>
         </aside>
     );
@@ -143,13 +143,17 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                     <div />
                     <div className="flex items-center gap-3">
                         <NotificationsPanel />
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-                                <span className="text-white text-xs font-bold">{user.name?.[0]?.toUpperCase()}</span>
+                        <Link href="/dashboard/profile/me" className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer group">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                                {user.photoUrl ? (
+                                    <img src={user.photoUrl} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                    <span className="text-white text-xs font-bold">{user.name?.[0]?.toUpperCase()}</span>
+                                )}
                             </div>
-                            <span className="text-sm font-medium text-gray-700">{user.name?.split(' ')[0]}</span>
+                            <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors">{user.name?.split(' ')[0]}</span>
                             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                        </div>
+                        </Link>
                     </div>
                 </header>
 

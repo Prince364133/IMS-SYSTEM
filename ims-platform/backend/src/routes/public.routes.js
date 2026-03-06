@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const publicController = require('../controllers/public.controller');
 const Settings = require('../models/Settings');
-const { authenticate, authorize } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 
 // ── API Key Middleware ──────────────────────────────────────────────────────────
@@ -54,12 +54,12 @@ router.post('/apply', publicController.submitApplication);
  * @route   GET /api/public/api-key
  * @desc    Get the current API key (Admin/HR only)
  */
-router.get('/api-key', authenticate, requireRole(['admin', 'hr']), publicController.getApiKey);
+router.get('/api-key', protect, requireRole('admin', 'hr'), publicController.getApiKey);
 
 /**
  * @route   POST /api/public/api-key/generate
  * @desc    Generate a new API key (Admin/HR only)
  */
-router.post('/api-key/generate', authenticate, requireRole(['admin', 'hr']), publicController.generateApiKey);
+router.post('/api-key/generate', protect, requireRole('admin', 'hr'), publicController.generateApiKey);
 
 module.exports = router;

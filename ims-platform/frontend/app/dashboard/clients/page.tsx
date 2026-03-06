@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '../../../lib/api';
-import { Building2, Search, Plus, Loader2, Globe, Mail, Phone, ExternalLink, Pencil } from 'lucide-react';
+import { Building2, Search, Plus, Loader2, Globe, Mail, Phone, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AddClientModal from '../../../components/AddClientModal';
+import ConfirmModal from '../../../components/ConfirmModal';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 export default function ClientsPage() {
     const [clients, setClients] = useState<any[]>([]);
@@ -13,7 +16,10 @@ export default function ClientsPage() {
     const [search, setSearch] = useState('');
     const [showAdd, setShowAdd] = useState(false);
     const [editClient, setEditClient] = useState<any>(null);
+    const [confirmDelete, setConfirmDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const { user } = useAuth();
+    const router = useRouter();
 
     function loadClients() {
         setLoading(true);
@@ -33,6 +39,26 @@ export default function ClientsPage() {
                     onSuccess={() => { setShowAdd(false); setEditClient(null); loadClients(); }}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={!!confirmDelete}
+                title="Delete Client"
+                message={`Are you sure you want to delete ${confirmDelete?.name}? This will also affect associated projects.`}
+                confirmText="Delete"
+                onConfirm={() => {
+                    setIsDeleting(true);
+                    api.delete(`/api/clients/${confirmDelete._id}`)
+                        .then(() => {
+                            toast.success('Client deleted');
+                            loadClients();
+                            setConfirmDelete(null);
+                        })
+                        .catch(() => toast.error('Failed to delete client'))
+                        .finally(() => setIsDeleting(false));
+                }}
+                onCancel={() => setConfirmDelete(null)}
+                loading={isDeleting}
+            />
 
             <div className="page-header flex items-center justify-between">
                 <div>
@@ -63,20 +89,57 @@ export default function ClientsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {clients.map((client) => (
-                        <div key={client._id} className="card p-5 hover:shadow-md transition-all">
+                        <div
+                            key={client._id}
+                            className="card p-5 hover:shadow-md transition-all cursor-pointer group"
+                            onClick={() => router.push(`/dashboard/profile/${client._id}`)}
+                        >
                             {/* Header */}
                             <div className="flex items-start gap-3 mb-4">
                                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0 border border-indigo-100">
                                     <span className="text-indigo-600 font-bold text-lg">{client.name?.[0]?.toUpperCase()}</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-gray-900 truncate">{client.name}</h3>
-                                    <p className="text-sm text-gray-500 truncate">{client.company}</p>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-gray-900 truncate">{client.name}</h3>
+                                        {client.status && (
+                                            <span className={clsx(
+                                                "px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-full flex-shrink-0",
+                                                client.status === 'active' ? "bg-emerald-100 text-emerald-700" :
+                                                    client.status === 'inactive' ? "bg-gray-100 text-gray-600" :
+                                                        "bg-amber-100 text-amber-700"
+                                            )}>
+                                                {client.status}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+                                        <span className="truncate">{client.company || 'No Company'}</span>
+                                        {client.industry && (
+                                            <>
+                                                <span>•</span>
+                                                <span className="truncate">{client.industry}</span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                                 {(user?.role === 'admin' || user?.role === 'hr') && (
-                                    <button onClick={() => setEditClient(client)} className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0">
-                                        <Pencil className="w-3.5 h-3.5 text-gray-400" />
-                                    </button>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setEditClient(client); }}
+                                            className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                                        </button>
+                                        {user?.role === 'admin' && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setConfirmDelete(client); }}
+                                                className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors flex-shrink-0 group/del"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5 text-gray-400 group-hover/del:text-red-500" />
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 

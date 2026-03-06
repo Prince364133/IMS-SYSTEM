@@ -33,7 +33,7 @@ function LoginForm() {
     useEffect(() => {
         const checkSetup = async () => {
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL;
                 const res = await fetch(`${apiUrl}/api/setup/status`);
                 const data = await res.json();
                 if (data.success && !data.isConfigured) {
@@ -131,7 +131,7 @@ function LoginForm() {
 
             const connectionString = `mongodb+srv://${username}:${password}@${cluster}/?retryWrites=true&w=majority&appName=Cluster0`;
 
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
             const res = await fetch(`${apiUrl}/api/setup/database`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -270,6 +270,35 @@ function LoginForm() {
                                     </p>
                                 </div>
                             </div>
+
+                            {/* IP Whitelist Help Banner */}
+                            <a
+                                href="https://cloud.mongodb.com/v2/69aa1cb73d3bc73f58124828#/security/network/accessList"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-start gap-3 p-3.5 bg-blue-50 border border-blue-200 rounded-2xl hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 group cursor-pointer"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-blue-800 mb-0.5">Connection failing? IP not whitelisted?</p>
+                                    <p className="text-[11px] text-blue-600 leading-relaxed">
+                                        Click here → MongoDB Atlas IP Access List → click <span className="font-bold">&quot;Add Current IP Address&quot;</span> to allow your device.
+                                    </p>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 flex-shrink-0 mt-0.5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                    <polyline points="15 3 21 3 21 9" />
+                                    <line x1="10" y1="14" x2="21" y2="3" />
+                                </svg>
+                            </a>
+
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -278,6 +307,7 @@ function LoginForm() {
                                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
                                 {loading ? 'Connecting & Seeding...' : 'Connect to MongoDB'}
                             </button>
+
                         </form>
                     ) : !mfaRequired ? (
                         <form onSubmit={handleLogin} className="space-y-5">

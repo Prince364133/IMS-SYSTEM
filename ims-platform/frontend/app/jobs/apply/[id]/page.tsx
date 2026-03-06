@@ -6,8 +6,10 @@ import api from '../../../../lib/api';
 import { Briefcase, MapPin, Clock, Users, FileText, Send, CheckCircle, ArrowLeft, Loader2, Globe, Mail, Phone, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
+import { useSettings } from '../../../../lib/settings-context';
 
 export default function CandidateApplicationPage() {
+    const { company } = useSettings();
     const { id } = useParams();
     const router = useRouter();
     const [job, setJob] = useState<any>(null);
@@ -106,7 +108,7 @@ export default function CandidateApplicationPage() {
                         <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                             <Briefcase className="w-4 h-4 text-white" />
                         </div>
-                        <span className="font-bold text-gray-900 tracking-tight">Instaura Recruitment</span>
+                        <span className="font-bold text-gray-900 tracking-tight">{company?.companyName || 'System'} Recruitment</span>
                     </div>
                 </div>
             </div>
@@ -124,7 +126,7 @@ export default function CandidateApplicationPage() {
                                 <MapPin className="w-4 h-4 text-gray-400" /> {job.location || 'Remote'}
                             </div>
                             <div className="flex items-center gap-2 font-medium">
-                                <Globe className="w-4 h-4 text-gray-400" /> {job.department || 'Instaura Tech'}
+                                <Globe className="w-4 h-4 text-gray-400" /> {job.department || company?.companyName || 'Organization'}
                             </div>
                         </div>
                     </div>

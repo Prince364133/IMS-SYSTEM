@@ -20,6 +20,7 @@ const documentSchema = new mongoose.Schema(
         relatedId: { type: mongoose.Schema.Types.ObjectId, default: null },
         relatedModel: { type: String, default: '' }, // 'Project', 'Task', 'User', etc.
         description: { type: String, default: '' },
+        taggedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Users tagged in the document
         deletedAt: { type: Date, default: null },
     },
     { timestamps: true }

@@ -1,7 +1,7 @@
 {
     "name": "instaura-ims-backend",
     "version": "2.0.0",
-    "description": "Instaura IMS — Production Backend (Node.js + Express + MongoDB Atlas)",
+    "description": "IMS — Production Backend (Node.js + Express + MongoDB Atlas)",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
@@ -13,6 +13,7 @@
         "@google/genai": "^1.43.0",
         "@sentry/node": "^7.114.0",
         "@sentry/profiling-node": "^1.3.5",
+        "axios": "^1.13.6",
         "bcryptjs": "^2.4.3",
         "bullmq": "^5.7.0",
         "cloudinary": "^2.2.0",

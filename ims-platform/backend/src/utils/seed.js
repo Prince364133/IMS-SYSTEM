@@ -4,7 +4,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
-const connectDB = require('../config/db');
+const { connectDB } = require('../config/db');
 
 const seed = async () => {
     try {

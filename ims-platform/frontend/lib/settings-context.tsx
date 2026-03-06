@@ -91,6 +91,38 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [company, setCompany] = useState<CompanyConfig | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // ── Theme Color Helpers ─────────────────────────────────────────────────────
+    function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+        const cleaned = hex.replace(/^#/, '');
+        if (cleaned.length === 3) {
+            const r = parseInt(cleaned[0] + cleaned[0], 16);
+            const g = parseInt(cleaned[1] + cleaned[1], 16);
+            const b = parseInt(cleaned[2] + cleaned[2], 16);
+            return { r, g, b };
+        }
+        if (cleaned.length === 6) {
+            const r = parseInt(cleaned.slice(0, 2), 16);
+            const g = parseInt(cleaned.slice(2, 4), 16);
+            const b = parseInt(cleaned.slice(4, 6), 16);
+            return { r, g, b };
+        }
+        return null;
+    }
+
+    function applyThemeColor(hex: string) {
+        const rgb = hexToRgb(hex);
+        if (!rgb) return;
+        // Primary channels — used by Tailwind: bg-primary, text-primary, ring-primary, etc.
+        document.documentElement.style.setProperty('--primary-rgb', `${rgb.r} ${rgb.g} ${rgb.b}`);
+        // Slightly darkened version for hover states (bg-primary-dark)
+        const darkR = Math.max(0, rgb.r - 30);
+        const darkG = Math.max(0, rgb.g - 10);
+        const darkB = Math.max(0, rgb.b - 10);
+        document.documentElement.style.setProperty('--primary-dark-rgb', `${darkR} ${darkG} ${darkB}`);
+        // Also set hex for any direct CSS var(--theme-color) usages
+        document.documentElement.style.setProperty('--theme-color', hex);
+    }
+
     const refreshSettings = async () => {
         try {
             const [settingsRes, companyRes] = await Promise.all([
@@ -104,10 +136,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             const newCompany = companyRes.data.config || null;
             setCompany(newCompany);
 
-            // Brand logic
+            // Brand logic — apply theme color as CSS variables for Tailwind
             const themeColor = newCompany?.brandColor || newSettings.themeColor;
             if (themeColor) {
-                document.documentElement.style.setProperty('--theme-color', themeColor);
+                applyThemeColor(themeColor);
             }
 
             // Update Page Title and Favicon

@@ -14,7 +14,7 @@ async function getCompanyInfo() {
       tagline: 'Your Organization Hub',
       brandColor: '#4f46e5',
       logoUrl: '',
-      websiteUrl: process.env.CLIENT_URL || 'http://localhost:3000'
+      websiteUrl: process.env.CLIENT_URL
     };
   }
   return config;
@@ -201,7 +201,7 @@ async function sendSalaryGeneratedEmail(to, name, month, netSalary) {
     <p>Hi ${name},</p>
     <p>Your salary for <strong>${month}</strong> has been processed:</p>
     <p style="font-size:32px;font-weight:700;color:${company.brandColor || '#4f46e5'};margin:16px 0;">₹${Number(netSalary).toLocaleString()}</p>
-    <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/hr" class="button">View Salary Details</a>
+    <a href="${process.env.CLIENT_URL}/dashboard/hr" class="button">View Salary Details</a>
   `, company);
   return send({
     to,
@@ -226,7 +226,7 @@ async function sendSystemAlert(to, subject, message) {
  */
 async function sendWelcomeEmail(user, password) {
   const company = await getCompanyInfo();
-  const loginUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  const loginUrl = process.env.CLIENT_URL;
   const html = baseLayout(`Welcome to ${company.companyName}`, `
     <h2>Welcome aboard, ${user.name}! 🚀</h2>
     <p>Your account has been created successfully. You can now log in to the ${company.companyName} management system using the credentials below:</p>
@@ -245,6 +245,30 @@ async function sendWelcomeEmail(user, password) {
     html,
     templateName: 'welcome',
     templateData: { name: user.name, password }
+  });
+}
+
+/**
+ * Send document tag notification
+ */
+async function sendDocumentTagEmail(to, name, documentName, documentUrl, senderName) {
+  const company = await getCompanyInfo();
+  const html = baseLayout('Document Shared With You', `
+    <h2>You've been tagged in a document</h2>
+    <p>Hi ${name},</p>
+    <p><strong>${senderName}</strong> has tagged you in a new document:</p>
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb;">
+      <p style="margin: 0; color: #64748b; font-size: 13px;">Document Title</p>
+      <p style="margin: 4px 0; font-weight: 600; color: #1a1a2e;">${documentName}</p>
+    </div>
+    <a href="${documentUrl}" class="button">View Document</a>
+  `, company);
+  return send({
+    to,
+    subject: `${company.companyName} — Document Shared: ${documentName}`,
+    html,
+    templateName: 'document_tagged',
+    templateData: { name, documentName, documentUrl, senderName }
   });
 }
 
@@ -277,4 +301,5 @@ module.exports = {
     `, company);
     return send({ to, subject: `${company.companyName} — Task Assigned: ${taskTitle}`, html });
   },
+  sendDocumentTagEmail,
 };

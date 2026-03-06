@@ -81,6 +81,21 @@ class GoogleDriveService {
     }
 
     /**
+     * Get file content from Google Drive
+     * @param {string} fileId 
+     * @returns {Promise<string>} - Content as string
+     */
+    async getFileContent(fileId) {
+        if (!this.drive) await this.#init();
+        const response = await this.drive.files.get({
+            fileId: fileId,
+            alt: 'media',
+        }, { responseType: 'arraybuffer' });
+
+        return Buffer.from(response.data).toString('utf-8');
+    }
+
+    /**
      * Test connection to Google Drive
      * @returns {Promise<boolean>}
      */

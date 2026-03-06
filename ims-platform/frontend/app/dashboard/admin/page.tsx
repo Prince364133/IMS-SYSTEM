@@ -23,6 +23,7 @@ export default function CEODashboard() {
     const [insightsLoading, setInsightsLoading] = useState(true);
     const [taskVelocity, setTaskVelocity] = useState<any[]>([]);
     const [projectHealth, setProjectHealth] = useState<any[]>([]);
+    const [ceoInsights, setCeoInsights] = useState<any>(null);
 
     useEffect(() => {
         if (!authLoading && user && !['admin', 'manager'].includes(user.role)) {
@@ -35,19 +36,27 @@ export default function CEODashboard() {
             api.get('/api/hrms/dashboard'),
             api.get('/api/tasks', { params: { limit: 500 } }),
             api.get('/api/projects', { params: { limit: 200 } }),
-        ]).then(([{ data: dash }, { data: taskData }, { data: projData }]) => {
+            api.get('/api/hrms/ceo-insights'),
+        ]).then(([{ data: dash }, { data: taskData }, { data: projData }, { data: insightsData }]) => {
             setStats(dash);
+            setCeoInsights(insightsData);
 
-            // Build task velocity from real task statuses
+            // Build task velocity from real task statuses (fallback if ceoInsights fails)
             const tasks = taskData.tasks || [];
             const statusMap: Record<string, number> = { 'todo': 0, 'in_progress': 0, 'in_review': 0, 'done': 0 };
             tasks.forEach((t: any) => { if (statusMap[t.status] !== undefined) statusMap[t.status]++; });
-            setTaskVelocity([
-                { name: 'To Do', completed: statusMap['todo'], added: 0 },
-                { name: 'In Progress', completed: statusMap['in_progress'], added: 0 },
-                { name: 'In Review', completed: statusMap['in_review'], added: 0 },
-                { name: 'Done', completed: statusMap['done'], added: 0 },
-            ]);
+
+            // Preference for backend aggregated data
+            if (insightsData.taskVelocity) {
+                setTaskVelocity(insightsData.taskVelocity);
+            } else {
+                setTaskVelocity([
+                    { name: 'To Do', completed: 0, added: statusMap['todo'] },
+                    { name: 'In Progress', completed: 0, added: statusMap['in_progress'] },
+                    { name: 'In Review', completed: 0, added: statusMap['in_review'] },
+                    { name: 'Done', completed: statusMap['done'], added: 0 },
+                ]);
+            }
 
             // Build project health from real project statuses
             const projects = projData.projects || [];
@@ -112,7 +121,7 @@ export default function CEODashboard() {
                 <div className="relative z-10 hidden sm:flex items-center gap-4">
                     <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10">
                         <p className="text-xs text-indigo-200 uppercase font-bold tracking-wider mb-1">Total Assets</p>
-                        <p className="text-xl font-black">₹ {(stats?.projects?.total * 150000).toLocaleString() || '0'}</p>
+                        <p className="text-xl font-black">₹ {(ceoInsights?.financialTrajectory?.reduce((acc: number, curr: any) => acc + curr.rev, 0)).toLocaleString() || '0'}</p>
                     </div>
                 </div>
             </div>
@@ -131,7 +140,7 @@ export default function CEODashboard() {
                     </div>
                     <div className="mt-4 flex items-center text-sm">
                         <span className="text-emerald-600 font-medium flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> 94%
+                            <TrendingUp className="w-3 h-3" /> {ceoInsights?.retentionRate || 100}%
                         </span>
                         <span className="text-gray-400 ml-2">Retention Rate</span>
                     </div>
@@ -167,7 +176,7 @@ export default function CEODashboard() {
                     </div>
                     <div className="mt-4 flex items-center text-sm">
                         <span className="text-emerald-600 font-medium flex items-center gap-1">
-                            <TrendingUp className="w-3 h-3" /> 100%
+                            <TrendingUp className="w-3 h-3" /> {ceoInsights?.satisfactionScore || 100}%
                         </span>
                         <span className="text-gray-400 ml-2">Satisfaction Score</span>
                     </div>
@@ -219,7 +228,7 @@ export default function CEODashboard() {
                     </h3>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <AreaChart data={ceoInsights?.financialTrajectory || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />

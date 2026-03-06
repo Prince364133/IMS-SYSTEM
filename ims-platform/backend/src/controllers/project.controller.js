@@ -18,7 +18,13 @@ exports.getProjects = async (req, res, next) => {
         }
         // Clients only see their linked projects
         if (req.user.role === 'client') {
-            query.clientId = req.user._id;
+            const Client = require('../models/Client');
+            const client = await Client.findOne({ userId: req.user._id });
+            if (client) {
+                query.clientIds = client._id;
+            } else {
+                return res.json({ projects: [], total: 0, page: Number(page) });
+            }
         }
         if (status) query.status = status;
         if (search) query.$text = { $search: search };
@@ -27,7 +33,7 @@ exports.getProjects = async (req, res, next) => {
         const [projects, total] = await Promise.all([
             Project.find(query)
                 .populate('ownerId', 'name email photoUrl')
-                .populate('clientId', 'name company')
+                .populate('clientIds', 'name company email')
                 .populate('memberIds', 'name email photoUrl role')
                 .sort({ updatedAt: -1 })
                 .skip(skip)
@@ -59,7 +65,7 @@ exports.createProject = async (req, res, next) => {
                         member.email,
                         member.name,
                         project.name,
-                        `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/projects/${project._id}`
+                        `${process.env.CLIENT_URL}/dashboard/projects/${project._id}`
                     ).catch(err => console.error(`Failed to send assignment email to ${member.email}:`, err.message));
                 }
 
@@ -98,7 +104,7 @@ exports.getProjectById = async (req, res, next) => {
     try {
         const project = await Project.findById(req.params.id)
             .populate('ownerId', 'name email photoUrl')
-            .populate('clientId', 'name company email')
+            .populate('clientIds', 'name company email phone')
             .populate('memberIds', 'name email photoUrl role position')
             .lean();
         if (!project) return res.status(404).json({ error: 'Project not found' });
@@ -131,6 +137,17 @@ exports.updateMembers = async (req, res, next) => {
         const project = await Project.findByIdAndUpdate(
             req.params.id, { memberIds }, { new: true }
         ).populate('memberIds', 'name email photoUrl role').lean();
+        if (!project) return res.status(404).json({ error: 'Project not found' });
+        res.json({ project });
+    } catch (err) { next(err); }
+};
+
+exports.updateClients = async (req, res, next) => {
+    try {
+        const { clientIds } = req.body;
+        const project = await Project.findByIdAndUpdate(
+            req.params.id, { clientIds }, { new: true }
+        ).populate('clientIds', 'name company email').lean();
         if (!project) return res.status(404).json({ error: 'Project not found' });
         res.json({ project });
     } catch (err) { next(err); }

@@ -4,8 +4,8 @@
 
 :root {
   --theme-color: #cf1d29;
-  --primary: var(--theme-color);
-  --primary-dark: var(--theme-color);
+  --primary-rgb: 207 29 41;
+  --primary-dark-rgb: 180 20 30;
   --secondary: #8b5cf6;
   --success: #10b981;
   --warning: #f59e0b;

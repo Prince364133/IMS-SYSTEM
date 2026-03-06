@@ -1,79 +1,89 @@
-# Instaura IMS - Full-Stack Internal Management System
+# Professional Internal Management System (IMS)
 
-> **Inventory Management System for Instaura** — Node.js + Express + MongoDB Atlas + Next.js
+A comprehensive, production-ready, white-labeled solution for managing organizational operations. Built with a modern tech stack and enhanced with AI capabilities.
 
 ---
 
 ## 🏗️ Architecture
 
-```
-Web Client (Next.js)  ──HTTP/REST──▶  Node.js + Express API  ──▶  MongoDB Atlas
+```mermaid
+graph LR
+    A[Frontend: Next.js 14] <--> B[Backend: Node.js + Express]
+    B <--> C[(MongoDB Atlas)]
+    B <--> D[Redis / BullMQ]
+    B <--> E[AI Services: Gemini/OpenAI]
 ```
 
 ---
 
-## 📁 Project Structure
+## ✨ Key Features
 
-The project is organized into two main platforms:
-
-### 1. Web Platform (`ims-platform/`)
-The primary internal management system.
-
-- **Backend (`ims-platform/backend/`)**: Node.js + Express API
-  - **Models**: User, Project, Task, Client, Goal, Job, Application, Chat, Attendance, etc.
-  - **Auth**: JWT verification with role-based access control.
-  - **Real-time**: Socket.IO for chat and notifications.
-- **Frontend (`ims-platform/frontend/`)**: Next.js 14 Web Dashboard
-  - **Design**: Tailwind CSS with sleek glassmorphism themes.
+- **🛡️ White-Labeling & Dynamic Branding**: Fully customizable branding via system settings. Update logos, colors, and names across the platform without code changes.
+- **🤖 AI-Powered Intelligence**:
+  - **Dashboard Insights**: Real-time organizational health analysis.
+  - **Project Intelligence**: Automated risk assessment and milestones tracking.
+  - **AI Doc Chat**: Summarize and query documents directly from Google Drive or local uploads.
+  - **Magic Write**: AI-assisted email drafting and professional communication tools.
+- **💼 HRMS & Operations**:
+  - Employee lifecycle management (Recruitment, Onboarding, Payroll).
+  - Attendance tracking with geo-fencing and MFA security.
+  - Advanced financial reporting with soft-delete data integrity.
+- **📁 Integrated File Management**: Native support for Google Drive and Cloudinary for enterprise-grade document sharing.
+- **💬 Real-Time Collaboration**: Instant chat and system-wide notifications powered by Socket.IO.
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Backend Setup
-```bash
-cd ims-platform/backend
-cp .env.example .env        # Fill in your MONGO_URI and JWT_SECRET
-npm install
-npm run dev                 # Start server on http://localhost:5000
-```
+### 1. Backend Setup (`ims-platform/backend/`)
+1. **Configure Environment**:
+   ```bash
+   cp .env.example .env
+   ```
+   *Required variables*: `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL` (e.g., `http://localhost:3000`).
+2. **Install & Initialize**:
+   ```bash
+   npm install
+   npm run seed    # Initialize system settings and default admin
+   ```
+3. **Start Server**:
+   ```bash
+   npm start       # Runs on http://localhost:5000
+   ```
 
-### 2. Frontend Setup
-```bash
-cd ims-platform/frontend
-cp .env.example .env.local  # Set NEXT_PUBLIC_API_URL
-npm install
-npm run dev                 # Start dashboard on http://localhost:3000
-```
-
----
-
-## 🔐 Default Login Credentials
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin3641@instaura.live | Instaura364133 |
-| HR | hr@instaura.live | HRInstaura@2024 |
-| Employee | employee@instaura.live | Employee@2024 |
-
----
-
-## 🛡️ Auth Flow
-
-```
-User Starts → Frontend App → AuthGuard Checks JWT
-  ├── JWT Valid → Redirect to Dashboard
-  └── No JWT    → Redirect to Login
-        ├── User Login  → API Call → Store Token → Dashboard
-        └── User Signup → API Call → Store Token → Dashboard
-```
+### 2. Frontend Setup (`ims-platform/frontend/`)
+1. **Configure Environment**:
+   ```bash
+   cp .env.example .env.local
+   ```
+   *Required variables*: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SOCKET_URL`.
+2. **Install & Run**:
+   ```bash
+   npm install
+   npm run dev     # Runs on http://localhost:3000
+   ```
 
 ---
 
-## 🌐 Deployment
-- **Backend**: Deploy `ims-platform/backend/` to [Render](https://render.com).
-- **Frontend**: Deploy `ims-platform/frontend/` to [Vercel](https://vercel.com).
+## 🔐 Role-Based Access Control
+
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Full system control, branding management, and audit logs. |
+| **HR** | Recruitment, Payroll, Leave Management, and Employee records. |
+| **Manager** | Project oversight, Team assignments, and Task validation. |
+| **Employee** | Personal dashboard, Task updates, Attendance, and Internal Chat. |
 
 ---
 
-## 👤 Author
-Made for **Instaura** — [github.com/Prince364133/IMS-SYSTEM](https://github.com/Prince364133/IMS-SYSTEM)
+## 🌐 Deployment & Security
+
+- **Security**: Helmet, Rate Limiting, JWT Auth, and MFA support.
+- **Monitoring**: Integration-ready with Sentry for error tracking.
+- **Cloud-Ready**: Optimized for deployment on Vercel/Render with environment-driven configurations.
+
+---
+
+## 👤 Credits & Support
+Developed for Enterprise Management Efficiency.
+[GitHub Repository](https://github.com/Prince364133/IMS-SYSTEM)

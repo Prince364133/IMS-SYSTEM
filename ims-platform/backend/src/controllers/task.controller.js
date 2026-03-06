@@ -53,7 +53,7 @@ exports.createTask = async (req, res, next) => {
                     populatedTask.assigneeId.name,
                     task.title,
                     populatedTask.projectId?.name || 'Personal/Misc',
-                    `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/tasks`
+                    `${process.env.CLIENT_URL}/dashboard/tasks`
                 ).catch(e => console.error('Task Assignment Email Error:', e.message));
             }
 
@@ -107,7 +107,7 @@ exports.updateTask = async (req, res, next) => {
                     populatedTask.assigneeId.name,
                     task.title,
                     populatedTask.projectId?.name || 'Personal/Misc',
-                    `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/tasks`
+                    `${process.env.CLIENT_URL}/dashboard/tasks`
                 ).catch(e => console.error('Task Reassignment Email Error:', e.message));
             }
 

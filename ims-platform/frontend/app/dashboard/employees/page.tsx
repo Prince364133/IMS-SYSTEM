@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '../../../lib/api';
-import { Users, Search, Loader2, Plus } from 'lucide-react';
+import { Users, Search, Loader2, Plus, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
 import { useAuth } from '../../../lib/auth-context';
 import AddEmployeeModal from '../../../components/AddEmployeeModal';
+import ConfirmModal from '../../../components/ConfirmModal';
+import toast from 'react-hot-toast';
 
 const ROLE_COLORS: Record<string, string> = {
     admin: 'badge-purple',
@@ -22,7 +25,10 @@ export default function EmployeesPage() {
     const [search, setSearch] = useState('');
     const [role, setRole] = useState('');
     const [showAdd, setShowAdd] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const { user } = useAuth();
+    const router = useRouter();
 
     function loadEmployees() {
         setLoading(true);
@@ -41,6 +47,26 @@ export default function EmployeesPage() {
                     onSuccess={() => { setShowAdd(false); loadEmployees(); }}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={!!confirmDelete}
+                title="Delete Employee"
+                message={`Are you sure you want to delete ${confirmDelete?.name}? This action cannot be undone.`}
+                confirmText="Delete"
+                onConfirm={() => {
+                    setIsDeleting(true);
+                    api.delete(`/api/users/${confirmDelete._id}`)
+                        .then(() => {
+                            toast.success('Employee deleted');
+                            loadEmployees();
+                            setConfirmDelete(null);
+                        })
+                        .catch(() => toast.error('Failed to delete employee'))
+                        .finally(() => setIsDeleting(false));
+                }}
+                onCancel={() => setConfirmDelete(null)}
+                loading={isDeleting}
+            />
 
             <div className="page-header flex items-center justify-between">
                 <div>
@@ -80,11 +106,17 @@ export default function EmployeesPage() {
                                     <th>Position</th>
                                     <th>Role</th>
                                     <th>Status</th>
+                                    {user?.role === 'admin' && <th className="text-right">Actions</th>}
                                 </tr>
                             </thead>
+
                             <tbody>
                                 {employees.map((emp) => (
-                                    <tr key={emp._id} className="cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => window.location.href = `/dashboard/employees/${emp._id}`}>
+                                    <tr
+                                        key={emp._id}
+                                        className="hover:bg-gray-50/80 cursor-pointer transition-colors"
+                                        onClick={() => router.push(`/dashboard/profile/${emp._id}`)}
+                                    >
                                         <td>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center flex-shrink-0">
@@ -110,6 +142,16 @@ export default function EmployeesPage() {
                                             </div>
                                         </td>
                                         <td><span className={clsx('badge', emp.isActive ? 'badge-green' : 'badge-red')}>{emp.isActive ? 'Active' : 'Inactive'}</span></td>
+                                        {user?.role === 'admin' && (
+                                            <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => setConfirmDelete(emp)}
+                                                    className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

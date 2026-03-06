@@ -1,8 +1,9 @@
-'use strict';
-
 const Item = require('../models/Item');
 const Category = require('../models/Category');
 const InventoryTransaction = require('../models/InventoryTransaction');
+const User = require('../models/User');
+const { createNotification } = require('../utils/notify');
+const { getIo } = require('../sockets');
 
 // CATEGORIES
 exports.getCategories = async (req, res, next) => {
@@ -89,6 +90,9 @@ exports.addTransaction = async (req, res, next) => {
         const item = await Item.findById(itemId);
         if (!item) return res.status(404).json({ error: 'Item not found' });
 
+        const oldQuantity = item.totalQuantity;
+        let transactionQty = Number(quantity);
+
         // Update item quantity
         if (type === 'in' || type === 'return') {
             item.totalQuantity += Number(quantity);
@@ -98,6 +102,7 @@ exports.addTransaction = async (req, res, next) => {
             }
             item.totalQuantity -= Number(quantity);
         } else if (type === 'adjustment') {
+            transactionQty = Number(quantity) - oldQuantity;
             item.totalQuantity = Number(quantity); // For adjustments, quantity is the NEW total
         }
 
@@ -106,7 +111,7 @@ exports.addTransaction = async (req, res, next) => {
         const transaction = await InventoryTransaction.create({
             item: itemId,
             type,
-            quantity: type === 'adjustment' ? (Number(quantity) - item.totalQuantity) : Number(quantity),
+            quantity: transactionQty,
             notes,
             reference,
             performedBy: req.user._id
@@ -114,10 +119,6 @@ exports.addTransaction = async (req, res, next) => {
 
         // Notify HR/Admin about stock movements/adjustments
         try {
-            const { createNotification } = require('../utils/notify');
-            const { getIo } = require('../sockets');
-            const User = require('../models/User');
-
             const admins = await User.find({ role: { $in: ['admin', 'hr'] } }).select('_id');
             const io = getIo();
 
@@ -146,7 +147,9 @@ exports.addTransaction = async (req, res, next) => {
                     });
                 }
             }
-        } catch (e) { /* swallow */ }
+        } catch (e) {
+            console.error('Inventory notification failed:', e);
+        }
 
         res.status(201).json({ transaction, item });
     } catch (err) { next(err); }

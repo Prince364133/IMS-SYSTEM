@@ -13,7 +13,9 @@ import clsx from 'clsx';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import FileUploadModal from '../../../../components/FileUploadModal';
+import UserSelectionModal from '../../../../components/UserSelectionModal';
 import { useAuth } from '../../../../lib/auth-context';
+import toast from 'react-hot-toast';
 
 const STATUS_COLORS: Record<string, string> = {
     planning: 'badge-gray',
@@ -50,6 +52,9 @@ export default function ProjectDetailPage() {
     const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'files' | 'notes' | 'milestones'>('overview');
     const [showUpload, setShowUpload] = useState(false);
     const [showAI, setShowAI] = useState(false);
+    const [showMembersModal, setShowMembersModal] = useState(false);
+    const [showClientsModal, setShowClientsModal] = useState(false);
+    const [updatingSelection, setUpdatingSelection] = useState(false);
     const [showMilestoneForm, setShowMilestoneForm] = useState(false);
     const [aiInsight, setAiInsight] = useState('');
     const [loadingAI, setLoadingAI] = useState(false);
@@ -86,6 +91,34 @@ export default function ProjectDetailPage() {
             console.error('Failed to add note', error);
         } finally {
             setSubmittingNote(false);
+        }
+    };
+
+    const handleUpdateMembers = async (selectedIds: string[]) => {
+        setUpdatingSelection(true);
+        try {
+            const { data } = await api.put(`/api/projects/${id}/members`, { memberIds: selectedIds });
+            setProject(data.project);
+            toast.success('Members updated');
+            setShowMembersModal(false);
+        } catch (error) {
+            toast.error('Failed to update members');
+        } finally {
+            setUpdatingSelection(false);
+        }
+    };
+
+    const handleUpdateClients = async (selectedIds: string[]) => {
+        setUpdatingSelection(true);
+        try {
+            const { data } = await api.put(`/api/projects/${id}/clients`, { clientIds: selectedIds });
+            setProject(data.project);
+            toast.success('Clients updated');
+            setShowClientsModal(false);
+        } catch (error) {
+            toast.error('Failed to update clients');
+        } finally {
+            setUpdatingSelection(false);
         }
     };
 
@@ -289,23 +322,60 @@ export default function ProjectDetailPage() {
                             </h3>
                             <div className="space-y-2.5">
                                 {(project.memberIds || []).map((m: any) => (
-                                    <div key={m._id} className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                            {m.photoUrl
-                                                ? <img src={m.photoUrl} className="w-full h-full rounded-full object-cover" />
-                                                : <span className="text-white text-xs font-bold">{m.name?.[0]?.toUpperCase()}</span>
-                                            }
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
-                                            <p className="text-xs text-gray-400 truncate capitalize">{m.role}</p>
+                                    <div key={m._id} className="flex items-center justify-between group/m">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                                                {m.photoUrl
+                                                    ? <img src={m.photoUrl} className="w-full h-full rounded-full object-cover" />
+                                                    : <span className="text-white text-xs font-bold">{m.name?.[0]?.toUpperCase()}</span>
+                                                }
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
+                                                <p className="text-xs text-gray-400 truncate capitalize">{m.role}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             {(user?.role === 'admin' || user?.role === 'manager') && (
-                                <button className="mt-3 w-full py-2 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center gap-1">
-                                    <Plus className="w-3.5 h-3.5" /> Add Member
+                                <button
+                                    onClick={() => setShowMembersModal(true)}
+                                    className="mt-3 w-full py-2 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Manage Members
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Clients Section */}
+                        <div className="card p-5">
+                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-amber-500" />
+                                Clients <span className="text-gray-400 text-sm font-normal">({project.clientIds?.length || 0})</span>
+                            </h3>
+                            <div className="space-y-2.5">
+                                {(project.clientIds || []).map((c: any) => (
+                                    <div key={c._id} className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                            <Building2 className="w-4 h-4 text-amber-600" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
+                                            <p className="text-xs text-gray-400 truncate">{c.company || 'Individual Client'}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!project.clientIds || project.clientIds.length === 0) && (
+                                    <p className="text-xs text-gray-400 italic">No clients linked</p>
+                                )}
+                            </div>
+                            {(user?.role === 'admin' || user?.role === 'manager') && (
+                                <button
+                                    onClick={() => setShowClientsModal(true)}
+                                    className="mt-3 w-full py-2 text-xs text-amber-600 hover:bg-amber-50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Manage Clients
                                 </button>
                             )}
                         </div>
@@ -571,6 +641,24 @@ export default function ProjectDetailPage() {
                     }}
                 />
             )}
+
+            <UserSelectionModal
+                isOpen={showMembersModal}
+                onClose={() => setShowMembersModal(false)}
+                title="Manage Project Members"
+                type="employee"
+                currentIds={project.memberIds?.map((m: any) => m._id) || []}
+                onSelect={handleUpdateMembers}
+            />
+
+            <UserSelectionModal
+                isOpen={showClientsModal}
+                onClose={() => setShowClientsModal(false)}
+                title="Manage Project Clients"
+                type="client"
+                currentIds={project.clientIds?.map((c: any) => c._id) || []}
+                onSelect={handleUpdateClients}
+            />
         </div>
     );
 }

@@ -24,6 +24,10 @@ exports.getClients = async (req, res, next) => {
 
 exports.createClient = async (req, res, next) => {
     try {
+        if (!req.body.clientId) {
+            const count = await Client.countDocuments();
+            req.body.clientId = `CLT-${String(count + 1).padStart(4, '0')}`;
+        }
         const client = await Client.create(req.body);
         await logAction(req.user._id, 'CREATE_CLIENT', 'client', client._id, { name: client.name }, req);
 

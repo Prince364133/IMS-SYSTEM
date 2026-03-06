@@ -9,6 +9,16 @@ exports.uploadFile = async (req, res, next) => {
         if (!req.storageResult) {
             return res.status(400).json({ error: 'File upload failed — Storage not configured' });
         }
+        let taggedUsers = [];
+        try {
+            if (req.body.taggedUsers) {
+                taggedUsers = typeof req.body.taggedUsers === 'string' ? JSON.parse(req.body.taggedUsers) : req.body.taggedUsers;
+            }
+        } catch (e) {
+            console.error('Error parsing taggedUsers in uploadFile:', e);
+            // Optionally, handle the error more gracefully, e.g., return an error response
+            // For now, we'll proceed with an empty taggedUsers array if parsing fails
+        }
         const { name, folder = 'general', relatedId, relatedModel, description } = req.body;
         const doc = await Document.create({
             name: name || req.file.originalname,

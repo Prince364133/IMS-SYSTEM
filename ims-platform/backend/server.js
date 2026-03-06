@@ -48,9 +48,7 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(compression());
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.CLIENT_URL
-    ? [process.env.CLIENT_URL, 'http://localhost:3000']
-    : ['*'];
+const allowedOrigins = process.env.CLIENT_URL ? [process.env.CLIENT_URL] : [];
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'
         ? (origin, cb) => {

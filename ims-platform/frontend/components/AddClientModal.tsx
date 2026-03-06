@@ -20,6 +20,11 @@ export default function AddClientModal({ onClose, onSuccess, editClient }: Props
         email: editClient?.email || '',
         phone: editClient?.phone || '',
         website: editClient?.website || '',
+        industry: editClient?.industry || '',
+        clientType: editClient?.clientType || '',
+        taxId: editClient?.taxId || '',
+        billingAddress: editClient?.billingAddress || '',
+        status: editClient?.status || 'active',
         notes: editClient?.notes || '',
     });
 
@@ -70,7 +75,7 @@ export default function AddClientModal({ onClose, onSuccess, editClient }: Props
                             <input value={form.name} onChange={set('name')} placeholder="Jane Smith" className="input" required />
                         </div>
                         <div>
-                            <label className="label">Company</label>
+                            <label className="label">Company / Org</label>
                             <div className="relative">
                                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input value={form.company} onChange={set('company')} placeholder="Acme Corp" className="input pl-9" />
@@ -80,14 +85,14 @@ export default function AddClientModal({ onClose, onSuccess, editClient }: Props
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="label">Email</label>
+                            <label className="label">Email Address</label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input value={form.email} onChange={set('email')} type="email" placeholder="jane@acme.com" className="input pl-9" />
                             </div>
                         </div>
                         <div>
-                            <label className="label">Phone</label>
+                            <label className="label">Phone Number</label>
                             <div className="relative">
                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input value={form.phone} onChange={set('phone')} placeholder="+91 9876543210" className="input pl-9" />
@@ -95,16 +100,52 @@ export default function AddClientModal({ onClose, onSuccess, editClient }: Props
                         </div>
                     </div>
 
-                    <div>
-                        <label className="label">Website</label>
-                        <div className="relative">
-                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input value={form.website} onChange={set('website')} placeholder="https://acme.com" className="input pl-9" />
+                    <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-4 mt-2">
+                        <div>
+                            <label className="label">Client Type</label>
+                            <select value={form.clientType} onChange={(e: any) => set('clientType')(e)} className="input">
+                                <option value="">Select Type</option>
+                                <option value="Enterprise">Enterprise</option>
+                                <option value="Startup">Startup</option>
+                                <option value="Individual">Individual</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label">Industry</label>
+                            <input value={form.industry} onChange={set('industry')} placeholder="e.g. Technology" className="input" />
+                        </div>
+                        <div>
+                            <label className="label">Status</label>
+                            <select value={form.status} onChange={(e: any) => set('status')(e)} className="input">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="lead">Lead / Prospect</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label">Website</label>
+                            <div className="relative">
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input value={form.website} onChange={set('website')} placeholder="https://acme.com" className="input pl-9" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="label">Tax ID / VAT No.</label>
+                            <input value={form.taxId} onChange={set('taxId')} placeholder="Optional" className="input" />
                         </div>
                     </div>
 
                     <div>
-                        <label className="label">Notes</label>
+                        <label className="label">Billing Address</label>
+                        <input value={form.billingAddress} onChange={set('billingAddress')} placeholder="Full billing address..." className="input" />
+                    </div>
+
+                    <div className="border-t border-gray-100 pt-4 mt-2">
+                        <label className="label">Internal Notes</label>
                         <div className="relative">
                             <AlignLeft className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                             <textarea value={form.notes} onChange={set('notes')} placeholder="Any relevant notes..." rows={3} className="input pl-9 resize-none" />

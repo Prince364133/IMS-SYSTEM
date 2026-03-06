@@ -43,6 +43,9 @@ const companyConfigSchema = new mongoose.Schema(
         designation: { type: String, default: '' },
         signatureImage: { type: String, default: '' },
 
+        // Chat Settings
+        employeeClientChatAllowed: { type: Boolean, default: true },
+
         // Email Branding Additional
         emailFooterText: { type: String, default: '' },
         copyrightText: { type: String, default: '' },

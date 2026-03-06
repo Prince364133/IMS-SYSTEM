@@ -12,6 +12,14 @@ const clientSchema = new mongoose.Schema(
         website: { type: String, default: '' },
         notes: { type: String, default: '' },
         logoUrl: { type: String, default: '' },
+        clientId: { type: String, unique: true, sparse: true, uppercase: true },
+
+        // ── Enterprise Fields ──────────────────────────────────────────────────────
+        industry: { type: String, default: '' },
+        clientType: { type: String, enum: ['Enterprise', 'Startup', 'Individual', 'Other', ''], default: '' },
+        taxId: { type: String, default: '' },
+        billingAddress: { type: String, default: '' },
+        status: { type: String, enum: ['active', 'inactive', 'lead'], default: 'active' },
 
         // ── Relations ──────────────────────────────────────────────────────────────
         projectIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],

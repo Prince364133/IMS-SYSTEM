@@ -11,7 +11,8 @@ module.exports = {
                 sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
             },
             colors: {
-                primary: 'var(--theme-color)',
+                primary: 'rgb(var(--primary-rgb) / <alpha-value>)',
+                'primary-dark': 'rgb(var(--primary-dark-rgb) / <alpha-value>)',
                 border: '#e5e7eb',
             },
         },

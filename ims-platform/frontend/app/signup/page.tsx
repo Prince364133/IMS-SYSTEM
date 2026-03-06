@@ -35,7 +35,7 @@ function SignupForm() {
 
     const checkStatus = async () => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
             const res = await fetch(`${apiUrl}/api/setup/status`);
             const data = await res.json();
             setIsConfigured(data.isConfigured);
@@ -55,7 +55,7 @@ function SignupForm() {
         e.preventDefault();
         setIsDbConnecting(true);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
             const res = await fetch(`${apiUrl}/api/setup/configure`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -93,7 +93,7 @@ function SignupForm() {
         e.preventDefault();
         setLoading(true);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
             const res = await fetch(`${apiUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

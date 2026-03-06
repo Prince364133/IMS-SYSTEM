@@ -23,7 +23,7 @@ const projectSchema = new mongoose.Schema(
 
         // ── Relations ──────────────────────────────────────────────────────────────
         ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', default: null },
+        clientIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Client' }],
         memberIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
         // ── Files ──────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ const projectSchema = new mongoose.Schema(
 
 projectSchema.index({ ownerId: 1, deletedAt: 1 });
 projectSchema.index({ status: 1 });
-projectSchema.index({ clientId: 1 });
+projectSchema.index({ clientIds: 1 });
 projectSchema.index({ memberIds: 1 });
 projectSchema.index({ name: 'text', description: 'text' });
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { X, User, Mail, Lock, Briefcase, Building2, DollarSign, Calendar, Loader2 } from 'lucide-react';
+import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -26,6 +27,8 @@ export default function AddEmployeeModal({ onClose, onSuccess, editUser }: Props
         position: editUser?.position || '',
         salary: editUser?.salary || '',
         phone: editUser?.phone || '',
+        emergencyContact: editUser?.emergencyContact || '',
+        leaveBalance: editUser?.leaveBalance || 20,
         joiningDate: editUser?.joiningDate ? editUser.joiningDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
     });
 
@@ -157,6 +160,18 @@ export default function AddEmployeeModal({ onClose, onSuccess, editUser }: Props
                         <div>
                             <label className="label">Phone</label>
                             <input value={form.phone} onChange={set('phone')} placeholder="+91 9876543210" className="input" />
+                        </div>
+                    </div>
+
+                    {/* Emergency Contact + Leave Balance */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label">Emergency Contact</label>
+                            <input value={form.emergencyContact} onChange={set('emergencyContact')} placeholder="Name - Phone" className="input" />
+                        </div>
+                        <div>
+                            <label className="label">Leave Balance (Days)</label>
+                            <input value={form.leaveBalance} onChange={set('leaveBalance')} type="number" className="input" />
                         </div>
                     </div>
 

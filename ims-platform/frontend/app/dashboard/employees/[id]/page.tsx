@@ -137,51 +137,45 @@ export default function EmployeeProfilePage() {
 
             {/* Profile Header */}
             <div className="card p-6 mb-5">
-                <div className="flex flex-col sm:flex-row items-start gap-5">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
                     {/* Avatar */}
-                    <div className="relative flex-shrink-0">
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg">
-                            {emp.photoUrl
-                                ? <img src={emp.photoUrl} className="w-full h-full rounded-2xl object-cover" alt={emp.name} />
-                                : <span className="text-white text-3xl font-black">{emp.name?.[0]?.toUpperCase()}</span>
-                            }
+                    <div className="relative group">
+                        <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-1 shadow-2xl transition-transform duration-300 group-hover:scale-105">
+                            <div className="w-full h-full bg-white rounded-[1.4rem] overflow-hidden flex items-center justify-center">
+                                {emp.photoUrl
+                                    ? <img src={emp.photoUrl} className="w-full h-full object-cover" alt={emp.name} />
+                                    : <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600 text-5xl font-black">{emp.name?.[0]?.toUpperCase()}</span>
+                                }
+                            </div>
                         </div>
                         <div className={clsx(
-                            'absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white',
+                            'absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 border-white shadow-md',
                             emp.isActive !== false ? 'bg-emerald-500' : 'bg-gray-300'
                         )} />
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex-1 text-center sm:text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <h1 className="text-2xl font-black text-gray-900">{emp.name}</h1>
-                                <p className="text-gray-500 text-sm mt-0.5">{emp.position || 'No position set'}</p>
+                                <h1 className="text-4xl font-black text-gray-900 tracking-tight">{emp.name}</h1>
+                                <p className="text-indigo-600 font-semibold text-lg mt-1">{emp.position || 'Professional'}</p>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <div className="flex flex-wrap gap-1">
-                                    {(emp.roles || [emp.role]).map((r: string) => (
-                                        <span key={r} className={clsx('badge', ROLE_COLORS[r] || 'badge-gray')}>{r}</span>
-                                    ))}
-                                </div>
+                            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                                 {(user?.role === 'admin' || user?.role === 'hr') && (
                                     <>
-                                        <button onClick={() => setShowEdit(true)} className="btn-secondary text-xs"><Edit2 className="w-3.5 h-3.5" />Edit</button>
+                                        <button onClick={() => setShowEdit(true)} className="btn-secondary group"><Edit2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />Edit</button>
                                         <button
                                             onClick={handleToggleActive}
                                             disabled={deactivating}
-                                            className={clsx('btn-secondary text-xs', emp.isActive === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-amber-500 border-amber-200 hover:bg-amber-50')}
+                                            className={clsx('btn-secondary', emp.isActive === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-amber-500 border-amber-200 hover:bg-amber-50')}
                                         >
-                                            {deactivating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : emp.isActive === false ? <Power className="w-3.5 h-3.5" /> : <PowerOff className="w-3.5 h-3.5" />}
+                                            {deactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : emp.isActive === false ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                                             {emp.isActive === false ? 'Activate' : 'Deactivate'}
                                         </button>
                                         {user?.role === 'admin' && (
-                                            <button
-                                                onClick={handleDelete}
-                                                className="btn-secondary text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                            >
-                                                <AlertCircle className="w-3.5 h-3.5" /> Delete User
+                                            <button onClick={handleDelete} className="btn-secondary text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300">
+                                                <AlertCircle className="w-4 h-4" /> Delete
                                             </button>
                                         )}
                                     </>
@@ -189,22 +183,64 @@ export default function EmployeeProfilePage() {
                             </div>
                         </div>
 
-                        {/* Details grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-4">
+                            {(emp.roles || [emp.role]).map((r: string) => (
+                                <span key={r} className={clsx('px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider', ROLE_COLORS[r] || 'bg-gray-100 text-gray-600')}>
+                                    {r}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10 pt-10 border-t border-gray-100">
+                    <div>
+                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <User className="w-3.5 h-3.5" /> Personal Information
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
                             {[
-                                { icon: Mail, label: emp.email, href: `mailto:${emp.email}` },
-                                { icon: Phone, label: emp.phone || 'No phone', href: null },
-                                { icon: Building2, label: emp.department || 'No dept', href: null },
-                                { icon: Hash, label: emp.employeeId || 'No ID', href: null },
-                                { icon: MapPin, label: emp.address || 'No address', href: null },
-                                { icon: Calendar, label: emp.joinDate ? `Joined ${format(new Date(emp.joinDate), 'MMM yyyy')}` : 'Join date unknown', href: null },
-                            ].map(({ icon: Icon, label, href }, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Icon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                    {href
-                                        ? <a href={href} className="hover:text-indigo-600 transition-colors truncate">{label}</a>
-                                        : <span className="truncate">{label}</span>
-                                    }
+                                { icon: Mail, label: 'Email', value: emp.email, href: `mailto:${emp.email}` },
+                                { icon: Phone, label: 'Phone', value: emp.phone || 'Not provided' },
+                                { icon: ShieldCheck, label: 'Emergency Contact', value: emp.emergencyContact || 'Not set' },
+                                { icon: MapPin, label: 'Address', value: emp.address || 'Address not listed' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-4 group">
+                                    <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                                        <item.icon className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{item.label}</p>
+                                        {item.href ? (
+                                            <a href={item.href} className="text-sm font-medium text-gray-700 hover:text-indigo-600 truncate transition-colors">{item.value}</a>
+                                        ) : (
+                                            <p className="text-sm font-medium text-gray-700 truncate">{item.value}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Briefcase className="w-3.5 h-3.5" /> Work Information
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            {[
+                                { icon: Building2, label: 'Department', value: emp.department || 'General' },
+                                { icon: Hash, label: 'Employee ID', value: emp.employeeId || 'IMS-EMP-PENDING' },
+                                { icon: Calendar, label: 'Join Date', value: emp.joinDate ? format(new Date(emp.joinDate), 'MMMM do, yyyy') : 'Joining Date TBD' },
+                                { icon: Clock, label: 'Leave Balance', value: `${emp.leaveBalance || 0} Days Available` },
+                            ].map((item, i) => (
+                                <div key={i} className="flex items-center gap-4 group">
+                                    <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-purple-50 transition-colors">
+                                        <item.icon className="w-4 h-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{item.label}</p>
+                                        <p className="text-sm font-medium text-gray-700 truncate">{item.value}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
