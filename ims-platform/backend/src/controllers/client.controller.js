@@ -3,6 +3,7 @@
 const Client = require('../models/Client');
 const { logAction } = require('../middleware/audit');
 const { triggerN8nWebhook } = require('../routes/webhook.routes');
+const AutomationService = require('../services/automation.service');
 
 exports.getClients = async (req, res, next) => {
     try {
@@ -31,13 +32,23 @@ exports.createClient = async (req, res, next) => {
         const client = await Client.create(req.body);
         await logAction(req.user._id, 'CREATE_CLIENT', 'client', client._id, { name: client.name }, req);
 
-        // Trigger n8n automation for new client onboarding
+        // Trigger Automation for new client
+        await AutomationService.trigger({
+            eventType: 'client_created',
+            triggeredBy: req.user._id,
+            targetUser: client._id, // Assume client model has a reference or we treat email as target
+            relatedItem: { itemId: client._id, itemModel: 'Client' },
+            description: `New client account created for ${client.name} (${client.company})`,
+            metadata: { clientName: client.name, company: client.company }
+        });
+
+        // Trigger n8n automation for new client onboarding (Optional/Legacy)
         await triggerN8nWebhook('new-client', {
             clientId: client._id,
             name: client.name,
             company: client.company,
             email: client.email
-        });
+        }).catch(() => { });
 
         res.status(201).json({ client });
     } catch (err) { next(err); }

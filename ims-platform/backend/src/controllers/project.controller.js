@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const { getIo, onlineUsers } = require('../sockets');
 const { logAction } = require('../middleware/audit');
 const { triggerN8nWebhook } = require('../routes/webhook.routes');
+const AutomationService = require('../services/automation.service');
 
 exports.getProjects = async (req, res, next) => {
     try {
@@ -51,39 +52,17 @@ exports.createProject = async (req, res, next) => {
         const project = await Project.create({ ...req.body, ownerId: req.user._id });
         await logAction(req.user._id, 'CREATE_PROJECT', 'project', project._id, { name: project.name }, req);
 
-        // Notify added members
+        // Notify added members via Automation Service
         if (project.memberIds && project.memberIds.length > 0) {
-            const io = getIo();
-            const User = require('../models/User');
-            const EmailService = require('../services/email.service');
-            const members = await User.find({ _id: { $in: project.memberIds } });
-
-            for (const member of members) {
-                // Send background email
-                if (member.email) {
-                    EmailService.sendProjectAssignedEmail(
-                        member.email,
-                        member.name,
-                        project.name,
-                        `${process.env.CLIENT_URL}/dashboard/projects/${project._id}`
-                    ).catch(err => console.error(`Failed to send assignment email to ${member.email}:`, err.message));
-                }
-
-                if (member._id.toString() === req.user._id.toString()) continue;
-
-                // Send in-app notification
-                const notif = await Notification.create({
-                    userId: member._id,
-                    type: 'project_update',
-                    title: 'New Project Assignment',
-                    message: `You were added to project: ${project.name}`,
-                    actionUrl: `/dashboard/projects/${project._id}`
+            for (const memberId of project.memberIds) {
+                await AutomationService.trigger({
+                    eventType: 'project_assigned',
+                    triggeredBy: req.user._id,
+                    targetUser: memberId,
+                    relatedItem: { itemId: project._id, itemModel: 'Project' },
+                    description: `You were assigned to the project: ${project.name}`,
+                    metadata: { projectName: project.name }
                 });
-
-                const sockets = onlineUsers.get(member._id.toString());
-                if (sockets) {
-                    for (const sid of sockets) io.to(sid).emit('notification:new', notif);
-                }
             }
         }
 
@@ -118,6 +97,18 @@ exports.updateProject = async (req, res, next) => {
             req.params.id, req.body, { new: true, runValidators: true }
         ).lean();
         if (!project) return res.status(404).json({ error: 'Project not found' });
+
+        // Trigger status change automation
+        if (req.body.status && req.body.status !== project.status) {
+            await AutomationService.trigger({
+                eventType: 'project_status_changed',
+                triggeredBy: req.user._id,
+                relatedItem: { itemId: project._id, itemModel: 'Project' },
+                description: `Project status changed to ${req.body.status}`,
+                metadata: { projectName: project.name, newStatus: req.body.status }
+            });
+        }
+
         await logAction(req.user._id, 'UPDATE_PROJECT', 'project', project._id, {}, req);
         res.json({ project });
     } catch (err) { next(err); }

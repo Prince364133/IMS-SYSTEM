@@ -122,19 +122,27 @@ router.get('/', protect, async (req, res, next) => {
 // POST /api/calendar - create event (admin only)
 router.post('/', protect, requireAdmin, async (req, res, next) => {
     try {
+        const AutomationService = require('../services/automation.service');
         const body = { ...req.body, createdBy: req.user._id };
         const event = await CalendarEvent.create(body);
 
-        // Auto-send meeting invite emails
-        if (event.type === 'meeting' && event.meeting) {
-            const populated = await CalendarEvent.findById(event._id)
-                .populate('meeting.attendees', 'name email')
-                .lean();
-            const creator = await User.findById(req.user._id).select('name email').lean();
-            await sendMeetingInvites(populated, creator);
-
-            // Mark email as sent
-            await CalendarEvent.findByIdAndUpdate(event._id, { 'meeting.emailSent': true });
+        // Trigger meeting automation
+        if (event.type === 'meeting' && event.meeting && event.meeting.attendees?.length > 0) {
+            for (const attendeeId of event.meeting.attendees) {
+                await AutomationService.trigger({
+                    eventType: 'meeting_scheduled',
+                    triggeredBy: req.user._id,
+                    targetUser: attendeeId,
+                    relatedItem: { itemId: event._id, itemModel: 'CalendarEvent' },
+                    description: `You have been invited to meeting: ${event.title}`,
+                    metadata: {
+                        meetingTitle: event.title,
+                        startTime: event.meeting.startTime,
+                        platform: event.meeting.platform,
+                        meetingLink: event.meeting.meetingLink
+                    }
+                });
+            }
         }
 
         res.status(201).json({ event });

@@ -21,9 +21,15 @@ graph LR
 - **🛡️ White-Labeling & Dynamic Branding**: Fully customizable branding via system settings. Update logos, colors, and names across the platform without code changes.
 - **🤖 AI-Powered Intelligence**:
   - **Dashboard Insights**: Real-time organizational health analysis.
-  - **Project Intelligence**: Automated risk assessment and milestones tracking.
+  - **Predictive Risk Engine**: AI-driven project risk detection and delay prediction.
+  - **Smart Classification**: Automated document categorization and task prioritization logic.
   - **AI Doc Chat**: Summarize and query documents directly from Google Drive or local uploads.
   - **Magic Write**: AI-assisted email drafting and professional communication tools.
+- **⚡ IMS Automation System**:
+  - **Centralized Event Hub**: Automated logging and dispatching for 20+ event types.
+  - **Smart Notifications**: Optimized delivery based on priority, presence, and role.
+  - **Scheduler (Cron)**: Automated salary generation, attendance alerts, and deadline reminders.
+  - **Digital Signing**: Native workflow for document signature requests and verification.
 - **💼 HRMS & Operations**:
   - Employee lifecycle management (Recruitment, Onboarding, Payroll).
   - Attendance tracking with geo-fencing and MFA security.

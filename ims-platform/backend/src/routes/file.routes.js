@@ -10,6 +10,7 @@ const ctrl = require('../controllers/file.controller');
 router.post('/upload', protect, upload.single('file'), handleUpload('general'), ctrl.uploadFile);
 router.post('/link', protect, ctrl.addFileLink);
 router.get('/', protect, ctrl.getFiles);
+router.post('/sign/:id', protect, ctrl.signFile);
 router.delete('/:id', protect, requireHR, ctrl.deleteFile);
 
 module.exports = router;

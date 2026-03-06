@@ -54,13 +54,16 @@ exports.register = async (req, res, next) => {
         const token = signAccessToken(user._id);
         const refreshToken = signRefreshToken(user._id);
 
-        // Send Welcome Email
-        try {
-            const EmailService = require('../services/email.service');
-            await EmailService.sendWelcomeEmail(user, password);
-        } catch (emailErr) {
-            console.error('Failed to send welcome email:', emailErr.message);
-        }
+        // Notify via Automation Service
+        const AutomationService = require('../services/automation.service');
+        await AutomationService.trigger({
+            eventType: 'user_onboarded',
+            triggeredBy: req.user?._id || user._id, // If admin created, use admin, else self
+            targetUser: user._id,
+            relatedItem: { itemId: user._id, itemModel: 'User' },
+            description: `Welcome to the team, ${user.name}! Your account is ready.`,
+            metadata: { password } // Send temporary password for email template
+        });
 
         if (req.user) {
             const Notification = require('../models/Notification');

@@ -40,20 +40,15 @@ exports.generateSalary = async (req, res, next) => {
             { upsert: true, new: true, runValidators: true }
         ).lean();
 
-        const Notification = require('../models/Notification');
-        const { getIo } = require('../sockets');
-        const employee = await User.findById(employeeId);
-
-        if (employee && employee.email) {
-            // Send Automated Salary Email
-            try {
-                const EmailService = require('../services/email.service');
-                await EmailService.sendSalarySlip(employee, salary);
-            } catch (emailErr) {
-                console.error('Failed to send automated salary email:', emailErr.message);
-            }
-
-        }
+        const AutomationService = require('../services/automation.service');
+        await AutomationService.trigger({
+            eventType: 'salary_generated',
+            triggeredBy: req.user._id,
+            targetUser: employeeId,
+            relatedItem: { itemId: salary._id, itemModel: 'Salary' },
+            description: `Salary for ${month} has been generated.`,
+            metadata: { month, netSalary }
+        });
 
         res.status(201).json({ salary });
     } catch (err) { next(err); }

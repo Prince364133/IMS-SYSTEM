@@ -279,27 +279,36 @@ async function sendSalarySlip(employee, salary) {
   return sendSalaryGeneratedEmail(employee.email, employee.name, salary.month, salary.netSalary);
 }
 
-module.exports = {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-  sendProjectAssignedEmail,
-  sendSalaryGeneratedEmail,
-  sendSalarySlip,
-  sendWelcomeEmail,
-  sendSystemAlert,
-  sendTaskAssignedEmail: async (to, name, taskTitle, projectName, taskUrl) => {
+sendDocumentTagEmail,
+  /**
+   * General purpose Transitional Email (Used by AutomationService)
+   */
+  sendTransitionalEmail: async (to, subject, data) => {
     const company = await getCompanyInfo();
-    const html = baseLayout('New Task Assigned', `
-      <h2>New Task: ${taskTitle}</h2>
-      <p>Hi ${name},</p>
-      <p>You have been assigned to a new task in project <strong>${projectName}</strong>.</p>
-      <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb;">
-        <p style="margin: 0; color: #64748b; font-size: 13px;">Task Title</p>
-        <p style="margin: 4px 0; font-weight: 600; color: #1a1a2e;">${taskTitle}</p>
-      </div>
-      <a href="${taskUrl}" class="button">View Task Details</a>
+    const html = baseLayout(subject, `
+      <h2>${subject}</h2>
+      <p>Hi ${data.name},</p>
+      <p>${data.message}</p>
+      ${data.ctaLink ? `<a href="${data.ctaLink}" class="button">${data.ctaText || 'View Details'}</a>` : ''}
     `, company);
-    return send({ to, subject: `${company.companyName} — Task Assigned: ${taskTitle}`, html });
+    return send({ to, subject: `${company.companyName} — ${subject}`, html });
   },
-  sendDocumentTagEmail,
+
+    /**
+     * Specialized Meeting Notification
+     */
+    sendMeetingEmail: async (to, name, meetingTitle, startTime, ctaUrl) => {
+      const company = await getCompanyInfo();
+      const html = baseLayout('Meeting Invitation', `
+      <h2>Meeting: ${meetingTitle}</h2>
+      <p>Hi ${name},</p>
+      <p>You have a meeting scheduled for <strong>${new Date(startTime).toLocaleString()}</strong>.</p>
+      <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb;">
+        <p style="margin: 0; color: #64748b; font-size: 13px;">Meeting Title</p>
+        <p style="margin: 4px 0; font-weight: 600; color: #1a1a2e;">${meetingTitle}</p>
+      </div>
+      <a href="${ctaUrl}" class="button">Join/View Meeting</a>
+    `, company);
+      return send({ to, subject: `${company.companyName} — Meeting: ${meetingTitle}`, html });
+    }
 };

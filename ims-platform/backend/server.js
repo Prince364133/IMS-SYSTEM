@@ -16,6 +16,7 @@ const rateLimit = require('express-rate-limit');
 const { connectDB } = require('./src/config/db');
 const { initSocket } = require('./src/sockets');
 const { initQueues } = require('./src/services/queue.service');
+const CronService = require('./src/services/cron.service');
 const errorHandler = require('./src/middleware/error');
 
 // ─── Route imports ────────────────────────────────────────────────────────────
@@ -150,6 +151,7 @@ async function bootstrap() {
         await connectDB();
         initSocket(server);
         await initQueues();
+        CronService.init(); // Initialize Scheduled Tasks
         server.listen(PORT, () => {
             console.log(`\n🚀 IMS API running on port ${PORT}`);
             console.log(`📡 Environment: ${process.env.NODE_ENV}`);

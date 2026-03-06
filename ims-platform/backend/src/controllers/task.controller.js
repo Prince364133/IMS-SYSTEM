@@ -6,6 +6,7 @@ const Project = require('../models/Project');
 const EmailService = require('../services/email.service');
 const { getIo, onlineUsers } = require('../sockets');
 const { logAction } = require('../middleware/audit');
+const AutomationService = require('../services/automation.service');
 
 exports.getTasks = async (req, res, next) => {
     try {
@@ -34,36 +35,16 @@ exports.createTask = async (req, res, next) => {
         const task = await Task.create({ ...req.body, createdBy: req.user._id });
         await logAction(req.user._id, 'CREATE_TASK', 'task', task._id, { title: task.title }, req);
 
-        // Notify assignee if someone else created it
+        // Notify assignee via Automation Service
         if (task.assigneeId && task.assigneeId.toString() !== req.user._id.toString()) {
-            const populatedTask = await Task.findById(task._id).populate('assigneeId').populate('projectId');
-
-            const notif = await Notification.create({
-                userId: task.assigneeId,
-                type: 'task_assigned',
-                title: 'New Task Assigned',
-                message: `You were assigned to: ${task.title}`,
-                actionUrl: '/dashboard/tasks'
+            await AutomationService.trigger({
+                eventType: 'task_assigned',
+                triggeredBy: req.user._id,
+                targetUser: task.assigneeId,
+                relatedItem: { itemId: task._id, itemModel: 'Task' },
+                description: `You were assigned to task: ${task.title}`,
+                metadata: { taskName: task.title, projectName: task.projectId ? (await Project.findById(task.projectId).select('name'))?.name : 'Personal' }
             });
-
-            // Send Email
-            if (populatedTask.assigneeId?.email) {
-                EmailService.sendTaskAssignedEmail(
-                    populatedTask.assigneeId.email,
-                    populatedTask.assigneeId.name,
-                    task.title,
-                    populatedTask.projectId?.name || 'Personal/Misc',
-                    `${process.env.CLIENT_URL}/dashboard/tasks`
-                ).catch(e => console.error('Task Assignment Email Error:', e.message));
-            }
-
-            try {
-                const io = getIo();
-                const sockets = onlineUsers.get(task.assigneeId.toString());
-                if (sockets) {
-                    for (const sid of sockets) io.to(sid).emit('notification:new', notif);
-                }
-            } catch (e) { console.error('Socket emit error:', e.message); }
         }
 
         res.status(201).json({ task });
@@ -88,36 +69,27 @@ exports.updateTask = async (req, res, next) => {
         const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }).lean();
         await logAction(req.user._id, 'UPDATE_TASK', 'task', task._id, {}, req);
 
-        // Notify if assignee changed
-        if (req.body.assigneeId && req.body.assigneeId !== oldTask.assigneeId?.toString() && req.body.assigneeId !== req.user._id.toString()) {
-            const populatedTask = await Task.findById(task._id).populate('assigneeId').populate('projectId');
-
-            const notif = await Notification.create({
-                userId: req.body.assigneeId,
-                type: 'task_assigned',
-                title: 'Reassigned Task',
-                message: `You were reassigned to: ${task.title}`,
-                actionUrl: '/dashboard/tasks'
+        // Trigger reassignment automation
+        if (req.body.assigneeId && req.body.assigneeId !== oldTask.assigneeId?.toString()) {
+            await AutomationService.trigger({
+                eventType: 'task_assigned',
+                triggeredBy: req.user._id,
+                targetUser: req.body.assigneeId,
+                relatedItem: { itemId: task._id, itemModel: 'Task' },
+                description: `You were reassigned to task: ${task.title}`,
+                metadata: { taskName: task.title, projectName: task.projectId ? (await Project.findById(task.projectId).select('name'))?.name : 'Personal' }
             });
+        }
 
-            // Send Email
-            if (populatedTask.assigneeId?.email) {
-                EmailService.sendTaskAssignedEmail(
-                    populatedTask.assigneeId.email,
-                    populatedTask.assigneeId.name,
-                    task.title,
-                    populatedTask.projectId?.name || 'Personal/Misc',
-                    `${process.env.CLIENT_URL}/dashboard/tasks`
-                ).catch(e => console.error('Task Reassignment Email Error:', e.message));
-            }
-
-            try {
-                const io = getIo();
-                const sockets = onlineUsers.get(req.body.assigneeId);
-                if (sockets) {
-                    for (const sid of sockets) io.to(sid).emit('notification:new', notif);
-                }
-            } catch (e) { }
+        // Trigger completion automation
+        if (req.body.status === 'Completed' && oldTask.status !== 'Completed') {
+            await AutomationService.trigger({
+                eventType: 'task_completed',
+                triggeredBy: req.user._id,
+                relatedItem: { itemId: task._id, itemModel: 'Task' },
+                description: `Task "${task.title}" has been completed.`,
+                metadata: { taskName: task.title }
+            });
         }
         // Notify if status changed and not updated by assignee
         if (req.body.status && req.body.status !== oldTask.status && oldTask.assigneeId?.toString() === req.user._id.toString()) {

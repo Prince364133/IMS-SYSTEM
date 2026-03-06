@@ -3,6 +3,8 @@
 const Document = require('../models/Document');
 const { deleteFromCloudinary } = require('../config/cloudinary');
 const googleDriveService = require('../services/google-drive.service');
+const AutomationService = require('../services/automation.service');
+const AIAutomationService = require('../services/ai-automation.service');
 
 exports.uploadFile = async (req, res, next) => {
     try {
@@ -34,6 +36,42 @@ exports.uploadFile = async (req, res, next) => {
             description: description || '',
             isLinkOnly: false
         });
+        // Trigger Automation for file upload
+        await AutomationService.trigger({
+            eventType: 'document_uploaded',
+            triggeredBy: req.user._id,
+            relatedItem: { itemId: doc._id, itemModel: 'Document' },
+            description: `Document "${doc.name}" was uploaded to project/folder: ${doc.folder}`,
+            metadata: { fileName: doc.name, folder: doc.folder, fileUrl: doc.fileUrl }
+        });
+
+        // Trigger AI classification (Async)
+        (async () => {
+            try {
+                // For simplicity, we only classify if it's a text-based/PDF file or we have text description
+                const aiResult = await AIAutomationService.classifyDocument(doc.description || doc.name);
+                if (aiResult.category && aiResult.category !== 'General') {
+                    await Document.findByIdAndUpdate(doc._id, { category: aiResult.category });
+                }
+            } catch (e) {
+                console.error('AI Classification Error:', e.message);
+            }
+        })();
+
+        // Handle tagged users
+        if (taggedUsers.length > 0) {
+            for (const userId of taggedUsers) {
+                await AutomationService.trigger({
+                    eventType: 'document_shared',
+                    triggeredBy: req.user._id,
+                    targetUser: userId,
+                    relatedItem: { itemId: doc._id, itemModel: 'Document' },
+                    description: `${req.user.name} shared a document with you: ${doc.name}`,
+                    metadata: { fileName: doc.name, fileUrl: doc.fileUrl }
+                });
+            }
+        }
+
         const storageMsg = req.storageResult.isFallback
             ? `NOTE: Cloud storage unavailable. File stored securely on local system: ${req.storageResult.fileId}`
             : `File stored successfully on ${req.storageResult.storageType === 'google_drive' ? 'Google Drive' : 'Cloudinary'}`;
@@ -100,5 +138,25 @@ exports.deleteFile = async (req, res, next) => {
 
         await Document.findByIdAndUpdate(req.params.id, { deletedAt: new Date() });
         res.json({ message: 'File deleted successfully' });
+    } catch (err) { next(err); }
+};
+
+exports.signFile = async (req, res, next) => {
+    try {
+        const doc = await Document.findById(req.params.id);
+        if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+        // Logic for digital signing (e.g., adding signature metadata)
+        // For now, we mark as signed in the automation system
+        const AutomationService = require('../services/automation.service');
+        await AutomationService.trigger({
+            eventType: 'document_signed',
+            triggeredBy: req.user._id,
+            relatedItem: { itemId: doc._id, itemModel: 'Document' },
+            description: `Document "${doc.name}" has been signed by ${req.user.name}.`,
+            metadata: { fileName: doc.name, signer: req.user.name }
+        });
+
+        res.json({ message: 'Document signed successfully', document: doc });
     } catch (err) { next(err); }
 };
