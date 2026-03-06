@@ -39,7 +39,9 @@ api.interceptors.response.use(
             } catch {
                 localStorage.removeItem('ims_token');
                 localStorage.removeItem('ims_refresh');
-                window.location.href = '/login';
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
             }
         }
         return Promise.reject(error);

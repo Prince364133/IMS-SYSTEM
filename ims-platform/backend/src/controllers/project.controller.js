@@ -2,7 +2,6 @@
 
 const Project = require('../models/Project');
 const Task = require('../models/Task');
-const Note = require('../models/Note');
 const Notification = require('../models/Notification');
 const { getIo, onlineUsers } = require('../sockets');
 const { logAction } = require('../middleware/audit');
@@ -49,50 +48,33 @@ exports.createProject = async (req, res, next) => {
         // Notify added members
         if (project.memberIds && project.memberIds.length > 0) {
             const io = getIo();
-
-            // Get member details for email
             const User = require('../models/User');
+            const EmailService = require('../services/email.service');
             const members = await User.find({ _id: { $in: project.memberIds } });
-            const memberEmails = members.map(m => m.email).filter(Boolean);
 
-            if (memberEmails.length > 0) {
-                const subject = encodeURIComponent(`New Project Assigned: ${project.name}`);
-                const body = encodeURIComponent(`Hi team,\n\nYou have been added as a member of the project: ${project.name}\n\nView it here: ${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/projects/${project._id}`);
-                const emailStr = memberEmails.join(',');
-                const actionUrl = `mailto:${emailStr}?subject=${subject}&body=${body}`;
-
-                const notification = await Notification.create({
-                    userId: req.user._id,
-                    type: 'email_pending',
-                    title: 'Send Project Assignment Email',
-                    message: `Click to notify members of project ${project.name}.`,
-                    actionUrl,
-                });
-                if (io) {
-                    io.to(req.user._id.toString()).emit('notification:new', {
-                        _id: notification._id.toString(),
-                        type: 'email_pending',
-                        title: 'Send Project Assignment Email',
-                        message: `Click to notify members of project ${project.name}.`,
-                        actionUrl,
-                        isRead: false,
-                        createdAt: notification.createdAt
-                    });
+            for (const member of members) {
+                // Send background email
+                if (member.email) {
+                    EmailService.sendProjectAssignedEmail(
+                        member.email,
+                        member.name,
+                        project.name,
+                        `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/projects/${project._id}`
+                    ).catch(err => console.error(`Failed to send assignment email to ${member.email}:`, err.message));
                 }
-            }
 
-            for (const memberId of project.memberIds) {
-                if (memberId.toString() === req.user._id.toString()) continue;
+                if (member._id.toString() === req.user._id.toString()) continue;
 
+                // Send in-app notification
                 const notif = await Notification.create({
-                    userId: memberId,
+                    userId: member._id,
                     type: 'project_update',
                     title: 'New Project Assignment',
                     message: `You were added to project: ${project.name}`,
                     actionUrl: `/dashboard/projects/${project._id}`
                 });
 
-                const sockets = onlineUsers.get(memberId.toString());
+                const sockets = onlineUsers.get(member._id.toString());
                 if (sockets) {
                     for (const sid of sockets) io.to(sid).emit('notification:new', notif);
                 }

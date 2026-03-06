@@ -75,6 +75,28 @@ router.put('/:id/complete', protect, async (req, res, next) => {
         ob.completedAt = new Date();
         ob.status = 'complete';
         await ob.save();
+
+        // Notify HR/Admin
+        try {
+            const { createNotification } = require('../utils/notify');
+            const { getIo } = require('../sockets');
+            const User = require('../models/User');
+
+            const admins = await User.find({ role: { $in: ['admin', 'hr'] } }).select('_id');
+            const io = getIo();
+
+            for (const admin of admins) {
+                await createNotification({
+                    userId: admin._id,
+                    type: 'alert',
+                    title: 'Onboarding Complete 🎊',
+                    message: `${req.user.name} has completed their onboarding process.`,
+                    actionUrl: `/dashboard/employees/${req.user._id}`,
+                    io,
+                });
+            }
+        } catch (e) { /* swallow */ }
+
         res.json({ onboarding: ob });
     } catch (error) { next(error); }
 });

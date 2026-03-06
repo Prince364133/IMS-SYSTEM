@@ -45,30 +45,14 @@ exports.generateSalary = async (req, res, next) => {
         const employee = await User.findById(employeeId);
 
         if (employee && employee.email) {
-            const subject = encodeURIComponent(`Your Salary for ${month} is Ready`);
-            const body = encodeURIComponent(`Hi ${employee.name},\n\nYour salary for ${month} has been processed.\nNet Salary: Rs. ${netSalary.toLocaleString()}\n\nYou can view the details in your HRMS dashboard.\n\nBest regards,\nHR Team`);
-            const actionUrl = `mailto:${employee.email}?subject=${subject}&body=${body}`;
-
-            const notification = await Notification.create({
-                userId: req.user._id,
-                type: 'email_pending',
-                title: 'Send Salary Email',
-                message: `Click to email ${employee.name} about their ${month} salary.`,
-                actionUrl,
-            });
-
-            const io = getIo();
-            if (io) {
-                io.to(req.user._id.toString()).emit('notification:new', {
-                    _id: notification._id.toString(),
-                    type: 'email_pending',
-                    title: 'Send Salary Email',
-                    message: `Click to email ${employee.name} about their ${month} salary.`,
-                    actionUrl,
-                    isRead: false,
-                    createdAt: notification.createdAt
-                });
+            // Send Automated Salary Email
+            try {
+                const EmailService = require('../services/email.service');
+                await EmailService.sendSalarySlip(employee, salary);
+            } catch (emailErr) {
+                console.error('Failed to send automated salary email:', emailErr.message);
             }
+
         }
 
         res.status(201).json({ salary });

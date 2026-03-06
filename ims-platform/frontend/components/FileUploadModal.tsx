@@ -32,6 +32,10 @@ function formatBytes(bytes: number) {
 
 export default function FileUploadModal({ relatedId, relatedModel, onClose, onSuccess }: Props) {
     const [items, setItems] = useState<FileItem[]>([]);
+    const [activeTab, setActiveTab] = useState<'upload' | 'link'>('upload');
+    const [linkName, setLinkName] = useState('');
+    const [linkUrl, setLinkUrl] = useState('');
+    const [isSavingLink, setIsSavingLink] = useState(false);
     const [dragging, setDragging] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -82,11 +86,31 @@ export default function FileUploadModal({ relatedId, relatedModel, onClose, onSu
                         setItems(prev => prev.map((it, i) => i === idx ? { ...it, progress: pct } : it));
                     },
                 });
-                setItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'done', progress: 100, result: data.file } : it));
-                onSuccess(data.file);
+                setItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'done', progress: 100, result: data.document } : it));
+                onSuccess(data.document);
             } catch (err: any) {
                 setItems(prev => prev.map((it, i) => i === idx ? { ...it, status: 'error', error: err?.response?.data?.error || 'Upload failed' } : it));
             }
+        }
+    };
+
+    const handleAddLink = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!linkUrl) return;
+        setIsSavingLink(true);
+        try {
+            const { data } = await api.post('/api/files/link', {
+                name: linkName || linkUrl.split('/').pop() || 'Untitled Link',
+                fileUrl: linkUrl,
+                relatedId,
+                relatedModel
+            });
+            onSuccess(data.document);
+            onClose();
+        } catch (err: any) {
+            alert(err?.response?.data?.error || 'Failed to add link');
+        } finally {
+            setIsSavingLink(false);
         }
     };
 
@@ -96,103 +120,165 @@ export default function FileUploadModal({ relatedId, relatedModel, onClose, onSu
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Modal */}
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 z-10">
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 z-10 overflow-hidden">
                 <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-lg font-bold text-gray-900">Upload Files</h2>
+                    <h2 className="text-lg font-bold text-gray-900">Manage Documents</h2>
                     <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
                         <X className="w-4 h-4 text-gray-500" />
                     </button>
                 </div>
 
-                {/* Drop zone */}
-                <div
-                    onDrop={onDrop}
-                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={() => setDragging(false)}
-                    onClick={() => inputRef.current?.click()}
-                    className={clsx(
-                        'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all',
-                        dragging
-                            ? 'border-indigo-500 bg-indigo-50'
-                            : 'border-gray-200 hover:border-indigo-400 hover:bg-gray-50'
-                    )}
-                >
-                    <Upload className={clsx('w-8 h-8 mx-auto mb-2', dragging ? 'text-indigo-500' : 'text-gray-300')} />
-                    <p className="text-sm font-medium text-gray-700">
-                        {dragging ? 'Drop files here' : 'Drag & drop or click to browse'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Images, ZIP · Max {MAX_SIZE_MB}MB each</p>
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        multiple
-                        accept={ACCEPTED.join(',')}
-                        onChange={onInputChange}
-                        className="hidden"
-                    />
-                </div>
-
-                {/* File list */}
-                {items.length > 0 && (
-                    <div className="mt-4 space-y-2 max-h-52 overflow-y-auto scrollbar-thin">
-                        {items.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
-                                {/* Thumbnail or icon */}
-                                <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
-                                    {item.preview
-                                        ? <img src={item.preview} alt="" className="w-full h-full object-cover" />
-                                        : <FileIcon className="w-4 h-4 text-gray-400" />
-                                    }
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-gray-800 truncate">{item.file.name}</p>
-                                    <p className="text-[10px] text-gray-400">{formatBytes(item.file.size)}</p>
-                                    {item.status === 'uploading' && (
-                                        <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
-                                        </div>
-                                    )}
-                                    {item.status === 'error' && (
-                                        <p className="text-[10px] text-red-500 mt-0.5">{item.error}</p>
-                                    )}
-                                </div>
-
-                                <div className="flex-shrink-0">
-                                    {item.status === 'pending' && (
-                                        <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400 transition-colors">
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                    {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
-                                    {item.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                                    {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-3 mt-5">
-                    <button onClick={onClose} className="btn-secondary flex-1">
-                        {allDone ? 'Close' : 'Cancel'}
+                {/* Tabs */}
+                <div className="flex p-1 bg-gray-100 rounded-xl mb-5">
+                    <button
+                        onClick={() => setActiveTab('upload')}
+                        className={clsx(
+                            "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                            activeTab === 'upload' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        Upload Files
                     </button>
-                    {!allDone && (
-                        <button
-                            onClick={uploadAll}
-                            disabled={!hasPending || isUploading}
-                            className="btn-primary flex-1"
-                        >
-                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                            {isUploading ? 'Uploading...' : `Upload ${items.filter(i => i.status === 'pending').length} file${items.filter(i => i.status === 'pending').length !== 1 ? 's' : ''}`}
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setActiveTab('link')}
+                        className={clsx(
+                            "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                            activeTab === 'link' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        Add via Link
+                    </button>
                 </div>
+
+                {activeTab === 'upload' ? (
+                    <>
+                        {/* Drop zone */}
+                        <div
+                            onDrop={onDrop}
+                            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                            onDragLeave={() => setDragging(false)}
+                            onClick={() => inputRef.current?.click()}
+                            className={clsx(
+                                'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all',
+                                dragging
+                                    ? 'border-indigo-500 bg-indigo-50'
+                                    : 'border-gray-200 hover:border-indigo-400 hover:bg-gray-50'
+                            )}
+                        >
+                            <Upload className={clsx('w-8 h-8 mx-auto mb-2', dragging ? 'text-indigo-500' : 'text-gray-300')} />
+                            <p className="text-sm font-medium text-gray-700">
+                                {dragging ? 'Drop files here' : 'Drag & drop or click to browse'}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Images, ZIP · Max {MAX_SIZE_MB}MB each</p>
+                            <input
+                                ref={inputRef}
+                                type="file"
+                                multiple
+                                accept={ACCEPTED.join(',')}
+                                onChange={onInputChange}
+                                className="hidden"
+                            />
+                        </div>
+
+                        {/* File list */}
+                        {items.length > 0 && (
+                            <div className="mt-4 space-y-2 max-h-52 overflow-y-auto scrollbar-thin pr-1">
+                                {items.map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
+                                        <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                                            {item.preview
+                                                ? <img src={item.preview} alt="" className="w-full h-full object-cover" />
+                                                : <FileIcon className="w-4 h-4 text-gray-400" />
+                                            }
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium text-gray-800 truncate">{item.file.name}</p>
+                                            <p className="text-[10px] text-gray-400">{formatBytes(item.file.size)}</p>
+                                            {item.status === 'uploading' && (
+                                                <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                                    <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
+                                                </div>
+                                            )}
+                                            {item.status === 'error' && (
+                                                <p className="text-[10px] text-red-500 mt-0.5">{item.error}</p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-shrink-0">
+                                            {item.status === 'pending' && (
+                                                <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400 transition-colors">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
+                                            {item.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                                            {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 mt-5">
+                            <button onClick={onClose} className="btn-secondary flex-1">
+                                {allDone ? 'Close' : 'Cancel'}
+                            </button>
+                            {!allDone && (
+                                <button
+                                    onClick={uploadAll}
+                                    disabled={!hasPending || isUploading}
+                                    className="btn-primary flex-1"
+                                >
+                                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                    {isUploading ? 'Uploading...' : `Upload ${items.filter(i => i.status === 'pending').length} file${items.filter(i => i.status === 'pending').length !== 1 ? 's' : ''}`}
+                                </button>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <form onSubmit={handleAddLink} className="space-y-4">
+                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-2">
+                            <p className="text-xs text-blue-700 leading-relaxed">
+                                Use this option if your file is already on <b>Google Drive</b> or <b>OneDrive</b> and you want to keep it there.
+                            </p>
+                        </div>
+                        <div>
+                            <label className="label">Display Name</label>
+                            <input
+                                value={linkName}
+                                onChange={e => setLinkName(e.target.value)}
+                                placeholder="e.g. Project Proposal"
+                                className="input"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="label">File URL</label>
+                            <input
+                                value={linkUrl}
+                                onChange={e => setLinkUrl(e.target.value)}
+                                placeholder="https://drive.google.com/..."
+                                className="input"
+                                type="url"
+                                required
+                            />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+                            <button
+                                type="submit"
+                                disabled={isSavingLink || !linkUrl}
+                                className="btn-primary flex-1"
+                            >
+                                {isSavingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                {isSavingLink ? 'Saving...' : 'Add Link'}
+                            </button>
+                        </div>
+                    </form>
+                )}
             </div>
         </div>
     );

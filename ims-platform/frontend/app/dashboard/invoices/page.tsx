@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
+import { useSettings } from '../../../lib/settings-context';
 import {
     FileText, Plus, Loader2, X, Trash2, Eye,
-    Filter, CheckCircle2, Send, Banknote, AlertCircle
+    Filter, CheckCircle2, Send, Banknote, AlertCircle, Printer
 } from 'lucide-react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
@@ -195,9 +196,176 @@ function CreateInvoiceModal({ onClose, onSuccess, clients }: { onClose: () => vo
     );
 }
 
+function InvoiceViewModal({ invoice, onClose }: { invoice: any; onClose: () => void }) {
+    const { company } = useSettings();
+    const brandColor = company?.brandColor || '#cf1d29';
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('invoice-print-content');
+        if (!printContent) return;
+        const originalContent = document.body.innerHTML;
+        const printStyles = `
+            <style>
+                @media print {
+                    body { margin: 0; padding: 20px; font-family: sans-serif; }
+                    .no-print { display: none; }
+                    .print-shadow { box-shadow: none !important; border: 1px solid #eee !important; }
+                }
+            </style>
+        `;
+        document.body.innerHTML = printStyles + printContent.innerHTML;
+        window.print();
+        document.body.innerHTML = originalContent;
+        window.location.reload();
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 print:p-0">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden print-shadow h-[90vh] flex flex-col" id="invoice-print-content">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 no-print flex-shrink-0">
+                    <h2 className="text-lg font-semibold text-gray-900">Invoice — {invoice.invoiceNumber}</h2>
+                    <div className="flex gap-2">
+                        <button onClick={handlePrint} className="btn-secondary text-xs"><Printer className="w-3.5 h-3.5" />Print</button>
+                        <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"><X className="w-4 h-4 text-gray-500" /></button>
+                    </div>
+                </div>
+
+                <div className="p-12 space-y-8 overflow-y-auto">
+                    {/* Header: Company and Invoice Info */}
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-4">
+                            {company?.companyLogo ? (
+                                <img src={company.companyLogo} alt={company.companyName} className="h-16 w-auto" />
+                            ) : (
+                                <h1 className="text-3xl font-black tracking-tight" style={{ color: brandColor }}>{company?.companyName || 'Internal Management System'}</h1>
+                            )}
+                            <div className="text-xs text-gray-500 max-w-xs leading-relaxed">
+                                <p className="font-bold text-gray-700 text-sm mb-1">{company?.companyName}</p>
+                                <p>{company?.address}</p>
+                                <p>{company?.city}, {company?.state} {company?.postalCode}</p>
+                                <p>Email: {company?.companyEmail}</p>
+                                <p>Phone: {company?.phoneNumber}</p>
+                                {company?.gstNumber && <p className="font-semibold text-gray-700 mt-1">GSTIN: {company.gstNumber}</p>}
+                            </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                            <h2 className="text-4xl font-black text-gray-200 uppercase tracking-tighter mb-4">Invoice</h2>
+                            <p className="text-sm font-bold text-gray-900">#{invoice.invoiceNumber}</p>
+                            <p className="text-xs text-gray-400">Issue Date: <span className="text-gray-900 font-medium">{format(new Date(invoice.issueDate), 'MMM d, yyyy')}</span></p>
+                            <p className="text-xs text-gray-400">Due Date: <span className="text-gray-900 font-medium">{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</span></p>
+                            <div className={clsx('inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase mt-2',
+                                invoice.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600')}>
+                                <div className={clsx('w-1.5 h-1.5 rounded-full', invoice.status === 'paid' ? 'bg-emerald-500' : 'bg-orange-500')} />
+                                {invoice.status}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bill To Info */}
+                    <div className="grid grid-cols-2 gap-12">
+                        <div className="p-6 rounded-2xl bg-gray-50 space-y-2">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bill To</h3>
+                            <p className="text-lg font-bold text-gray-900">{invoice.clientName || invoice.clientId?.name}</p>
+                            <p className="text-xs text-gray-500 leading-relaxed">{invoice.clientId?.email}</p>
+                        </div>
+                        {company?.bankName && (
+                            <div className="p-6 rounded-2xl border border-gray-100 space-y-2">
+                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Info</h3>
+                                <p className="text-xs text-gray-700"><span className="text-gray-400">Bank:</span> {company.bankName}</p>
+                                <p className="text-xs text-gray-700"><span className="text-gray-400">Acc No:</span> <span className="font-mono font-bold tracking-tight">{company.bankAccountNumber}</span></p>
+                                <p className="text-xs text-gray-700"><span className="text-gray-400">IFSC:</span> <span className="font-mono">{company.ifscCode}</span></p>
+                                <p className="text-xs text-gray-700"><span className="text-gray-400">Holder:</span> {company.accountHolderName}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Line Items Table */}
+                    <div className="rounded-2xl border border-gray-100 overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest w-24">Quantity</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Unit Price</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest w-32">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {invoice.lineItems?.map((item: any, i: number) => (
+                                    <tr key={i} className="group">
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-gray-900">{item.description}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-center text-gray-600">{item.quantity}</td>
+                                        <td className="px-6 py-4 text-right text-gray-600">₹{item.unitPrice?.toLocaleString('en-IN')}</td>
+                                        <td className="px-6 py-4 text-right font-black text-gray-900">₹{(item.quantity * item.unitPrice).toLocaleString('en-IN')}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Summary and Signature */}
+                    <div className="flex justify-between items-start gap-12">
+                        <div className="flex-1 space-y-4">
+                            {invoice.notes && (
+                                <div className="p-4 rounded-xl bg-gray-50/50 border border-gray-100">
+                                    <h4 className="text-[10px] font-black text-gray-400 uppercase mb-1">Notes & Terms</h4>
+                                    <p className="text-xs text-gray-500 leading-relaxed italic">{invoice.notes}</p>
+                                </div>
+                            )}
+                            <div className="text-[10px] text-gray-300">
+                                THANK YOU FOR YOUR BUSINESS!
+                            </div>
+                        </div>
+                        <div className="w-72 space-y-4">
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-400 font-medium">Subtotal</span>
+                                    <span className="font-bold text-gray-900">₹{invoice.subtotal?.toLocaleString('en-IN')}</span>
+                                </div>
+                                {invoice.taxAmount > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-400 font-medium">Tax ({invoice.taxPercent}%)</span>
+                                        <span className="font-bold text-gray-900">₹{invoice.taxAmount.toLocaleString('en-IN')}</span>
+                                    </div>
+                                )}
+                                {invoice.discount > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-400 font-medium">Discount</span>
+                                        <span className="font-bold text-red-500">-₹{invoice.discount.toLocaleString('en-IN')}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center py-4 border-t border-b border-gray-100">
+                                    <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>
+                                    <span className="text-2xl font-black" style={{ color: brandColor }}>₹{invoice.totalAmount?.toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+
+                            <div className="text-center pt-8 space-y-2">
+                                {company?.signatureImage ? (
+                                    <img src={company.signatureImage} alt="Signature" className="h-14 mx-auto mix-multiply" />
+                                ) : (
+                                    <div className="h-14 w-32 border-b border-dashed border-gray-200 mx-auto" />
+                                )}
+                                <div>
+                                    <p className="text-xs font-bold text-gray-900 tracking-tight">{company?.authorizedSignatory || 'Authorized Signatory'}</p>
+                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{company?.designation || 'Owner / Partner'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function InvoicesPage() {
     const { user } = useAuth();
+    const { company } = useSettings();
     const [invoices, setInvoices] = useState<any[]>([]);
+    const [viewInvoice, setViewInvoice] = useState<any>(null);
     const [clients, setClients] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
@@ -240,6 +408,9 @@ export default function InvoicesPage() {
         <div>
             {showCreate && (
                 <CreateInvoiceModal onClose={() => setShowCreate(false)} onSuccess={loadInvoices} clients={clients} />
+            )}
+            {viewInvoice && (
+                <InvoiceViewModal invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
             )}
 
             <div className="page-header flex items-center justify-between">
@@ -340,7 +511,10 @@ export default function InvoicesPage() {
                                                             Mark Paid
                                                         </button>
                                                     )}
-                                                    <button onClick={() => deleteInvoice(inv._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600">
+                                                    <button onClick={() => setViewInvoice(inv)} className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-400 hover:text-indigo-600" title="View Invoice">
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => deleteInvoice(inv._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600" title="Delete">
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>

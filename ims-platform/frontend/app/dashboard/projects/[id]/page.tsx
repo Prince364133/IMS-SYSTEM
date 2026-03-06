@@ -6,7 +6,8 @@ import api from '../../../../lib/api';
 import {
     ArrowLeft, FolderKanban, Plus, Users, Calendar, Tag,
     CheckSquare, Paperclip, Edit2, Loader2, MoreHorizontal,
-    Clock, AlertCircle, CheckCircle2, Play, Eye, MessageSquare, Sparkles
+    Clock, AlertCircle, CheckCircle2, Play, Eye, MessageSquare, Sparkles,
+    Globe, ExternalLink
 } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
@@ -575,29 +576,32 @@ export default function ProjectDetailPage() {
 }
 
 function FileCard({ file }: { file: any }) {
-    const ext = file.originalName?.split('.').pop()?.toUpperCase() || 'FILE';
+    const ext = file.name?.split('.').pop()?.toUpperCase() || 'FILE';
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext.toLowerCase());
+    const isLink = file.isLinkOnly || file.storageType === 'external';
 
     return (
-        <a href={file.url} target="_blank" rel="noopener noreferrer"
+        <a href={file.fileUrl} target="_blank" rel="noopener noreferrer"
             className="card p-4 hover:shadow-md transition-all flex items-center gap-3 cursor-pointer group"
         >
             <div className={clsx(
-                'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold',
-                isImage ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'
+                'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold',
+                isImage ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500',
+                isLink && 'bg-amber-50 text-amber-600'
             )}>
-                {isImage && file.url
-                    ? <img src={file.url} alt="" className="w-full h-full rounded-lg object-cover" />
-                    : ext.slice(0, 4)
+                {isImage && file.fileUrl
+                    ? <img src={file.fileUrl} alt="" className="w-full h-full rounded-lg object-cover" />
+                    : isLink ? <Globe className="w-5 h-5" /> : ext.slice(0, 4)
                 }
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{file.originalName}</p>
+                <p className="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{file.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                    {file.size ? `${(file.size / 1024).toFixed(1)} KB` : ''}
+                    {file.fileSize > 0 ? `${(file.fileSize / 1024).toFixed(1)} KB` : isLink ? 'External Link' : ''}
                     {file.uploadedBy?.name && ` · ${file.uploadedBy.name}`}
                 </p>
             </div>
+            {isLink && <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-amber-500 transition-colors" />}
         </a>
     );
 }

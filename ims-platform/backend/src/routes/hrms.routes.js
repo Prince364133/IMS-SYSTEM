@@ -7,6 +7,7 @@ const { requireHR } = require('../middleware/rbac');
 const ctrl = require('../controllers/hrms.controller');
 
 router.get('/dashboard', protect, requireHR, ctrl.getDashboard);
+router.get('/weekly-trends', protect, ctrl.getWeeklyTrends);
 router.get('/attendance-report', protect, requireHR, ctrl.getAttendanceReport);
 router.get('/salary-report', protect, requireHR, ctrl.getSalaryReport);
 

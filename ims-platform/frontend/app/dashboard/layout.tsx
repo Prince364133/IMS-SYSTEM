@@ -8,9 +8,9 @@ import { AuthProvider, useAuth } from '../../lib/auth-context';
 import { useSettings } from '../../lib/settings-context';
 import {
     LayoutDashboard, FolderKanban, CheckSquare, Users, Building2,
-    Calendar, MessageSquare, BarChart3, Briefcase, Target,
+    Calendar, MessageSquare, BarChart3, Briefcase, Target, Star,
     Settings, LogOut, Loader2, ChevronDown, DollarSign, FileText, BookOpen, Sparkles,
-    CalendarDays, Clock, Receipt, FilePlus2,
+    CalendarDays, Clock, Receipt, FilePlus2, HelpCircle
 } from 'lucide-react';
 import clsx from 'clsx';
 import NotificationsPanel from '../../components/NotificationsPanel';
@@ -29,19 +29,23 @@ const navigation = [
     { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarDays, roles: ['admin', 'manager', 'hr', 'employee'] },
     { name: 'Time Tracking', href: '/dashboard/timetracking', icon: Clock, roles: ['admin', 'manager', 'hr', 'employee'] },
     { name: 'Expenses', href: '/dashboard/expenses', icon: Receipt, roles: ['admin', 'manager', 'hr', 'employee'] },
+    { name: 'Inventory', href: '/dashboard/inventory', icon: Building2, roles: ['admin', 'hr', 'manager'] },
     { name: 'Invoices', href: '/dashboard/invoices', icon: FilePlus2, roles: ['admin', 'manager', 'hr'] },
     { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare, roles: ['admin', 'manager', 'hr', 'employee', 'client'] },
     { name: 'AI Assistant', href: '/dashboard/ai', icon: Sparkles, roles: ['admin', 'manager', 'hr', 'employee'] },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['admin', 'manager', 'hr'] },
     { name: 'Reports', href: '/dashboard/reports', icon: FileText, roles: ['admin', 'hr', 'manager'] },
+    { name: 'Performance Reviews', href: '/dashboard/reviews', icon: Star, roles: ['admin', 'hr', 'manager', 'employee'] },
     { name: 'Documents', href: '/dashboard/documents', icon: BookOpen, roles: ['admin', 'hr', 'manager', 'employee'] },
+    { name: 'Emails', href: '/dashboard/emails', icon: MessageSquare, roles: ['admin', 'hr'] },
+    { name: 'Documentation', href: '/dashboard/docs', icon: HelpCircle, roles: ['admin', 'manager', 'hr', 'employee', 'client'] },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings, roles: ['admin', 'manager', 'hr'] },
 ];
 
 function Sidebar() {
     const pathname = usePathname();
     const { user, logout } = useAuth();
-    const { settings } = useSettings();
+    const { settings, company } = useSettings();
 
     const filteredNav = navigation.filter(
         (item) => user && item.roles.includes(user.role)
@@ -52,16 +56,16 @@ function Sidebar() {
             {/* Brand */}
             <div className="p-5 border-b border-gray-100">
                 <div className="flex items-center gap-3">
-                    {settings?.logoUrl ? (
-                        <img src={settings.logoUrl} alt="Company Logo" className="w-9 h-9 rounded-xl object-contain bg-white" />
+                    {(company?.companyLogo || settings?.logoUrl) ? (
+                        <img src={company?.companyLogo || settings.logoUrl} alt="Company Logo" className="w-9 h-9 rounded-xl object-contain bg-white" />
                     ) : (
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                            <span className="text-white font-black text-base">{settings?.companyName?.[0]?.toUpperCase() || 'I'}</span>
+                            <span className="text-white font-black text-base">{(company?.companyName || settings?.companyName)?.[0]?.toUpperCase() || 'I'}</span>
                         </div>
                     )}
                     <div>
-                        <p className="font-bold text-gray-900 text-sm">{settings?.companyName || 'Instaura IMS'}</p>
-                        <p className="text-xs text-gray-400">Internal Platform</p>
+                        <p className="font-bold text-gray-900 text-sm">{company?.companyName || settings?.companyName || 'Internal Management System'}</p>
+                        <p className="text-xs text-gray-400">{company?.tagline || 'Internal Platform'}</p>
                     </div>
                 </div>
             </div>

@@ -2,12 +2,7 @@
 
 const mongoose = require('mongoose');
 
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-    console.error('❌ MONGO_URI is not defined in environment variables');
-    process.exit(1);
-}
+let MONGO_URI = process.env.MONGO_URI;
 
 const options = {
     maxPoolSize: 10,
@@ -16,6 +11,11 @@ const options = {
 };
 
 async function connectDB() {
+    if (!MONGO_URI) {
+        console.warn('⚠️ MONGO_URI is not defined. Server is running in Setup Mode.');
+        return false;
+    }
+
     try {
         const conn = await mongoose.connect(MONGO_URI, options);
         console.log(`✅ MongoDB Atlas connected: ${conn.connection.host}`);
@@ -31,10 +31,29 @@ async function connectDB() {
         mongoose.connection.on('reconnected', () => {
             console.log('MongoDB reconnected.');
         });
+
+        return true;
     } catch (err) {
         console.error(`❌ MongoDB connection failed: ${err.message}`);
-        throw err;
+        console.warn('⚠️ Server is running in Setup Mode due to connection failure.');
+        return false;
     }
 }
 
-module.exports = connectDB;
+async function testAndConnectDB(uri) {
+    try {
+        // Disconnect first if already connected
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect();
+        }
+
+        const conn = await mongoose.connect(uri, options);
+        console.log(`✅ MongoDB Dynamic Connection Successful: ${conn.connection.host}`);
+        MONGO_URI = uri; // Update local reference
+        return true;
+    } catch (err) {
+        throw new Error(`Connection failed: ${err.message}`);
+    }
+}
+
+module.exports = { connectDB, testAndConnectDB };

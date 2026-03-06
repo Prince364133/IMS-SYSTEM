@@ -21,48 +21,154 @@ const LEAVE_TYPE_COLORS: Record<string, string> = {
 
 function thisMonthStr() { return new Date().toISOString().slice(0, 7); }
 
+import { format } from 'date-fns';
+import { useSettings } from '../../../lib/settings-context';
+
 function PayslipModal({ salary, onClose }: { salary: any; onClose: () => void }) {
+    const { company } = useSettings();
+    const brandColor = company?.brandColor || '#cf1d29';
+
+    const handlePrint = () => {
+        const printContent = document.getElementById('payslip-content');
+        if (!printContent) return;
+
+        const originalContent = document.body.innerHTML;
+        const printStyles = `
+            <style>
+                @media print {
+                    body { margin: 0; padding: 20px; font-family: sans-serif; }
+                    .no-print { display: none; }
+                    .print-shadow { box-shadow: none !important; border: 1px solid #eee !important; }
+                }
+            </style>
+        `;
+
+        document.body.innerHTML = printStyles + printContent.innerHTML;
+        window.print();
+        document.body.innerHTML = originalContent;
+        window.location.reload(); // Reload to restore React state
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 print:p-0">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden print-shadow no-print-scroll" id="payslip-content">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 no-print">
                     <h2 className="text-lg font-semibold text-gray-900">Payslip — {salary.month}</h2>
                     <div className="flex gap-2">
-                        <button onClick={() => window.print()} className="btn-secondary text-xs"><Printer className="w-3.5 h-3.5" />Print</button>
+                        <button onClick={handlePrint} className="btn-secondary text-xs"><Printer className="w-3.5 h-3.5" />Print</button>
                         <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"><X className="w-4 h-4 text-gray-500" /></button>
                     </div>
                 </div>
-                <div className="px-6 py-5 space-y-4">
-                    {/* Employee */}
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">{salary.employeeId?.name?.[0]?.toUpperCase()}</span>
-                        </div>
+
+                <div className="p-8 space-y-6">
+                    {/* Company Header */}
+                    <div className="flex justify-between items-start">
                         <div>
-                            <p className="font-semibold text-gray-900">{salary.employeeId?.name}</p>
-                            <p className="text-xs text-gray-400">{salary.employeeId?.department} · {salary.employeeId?.employeeId}</p>
+                            {company?.companyLogo ? (
+                                <img src={company.companyLogo} alt={company.companyName} className="h-12 w-auto mb-2" />
+                            ) : (
+                                <h1 className="text-2xl font-black tracking-tight" style={{ color: brandColor }}>{company?.companyName || 'Internal Management System'}</h1>
+                            )}
+                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{company?.tagline || 'Internal Management System'}</p>
                         </div>
-                        <span className={clsx('badge ml-auto', salary.status === 'paid' ? 'badge-green' : salary.status === 'approved' ? 'badge-blue' : 'badge-orange')}>{salary.status}</span>
+                        <div className="text-right text-xs text-gray-400 space-y-0.5">
+                            <p className="font-bold text-gray-600">{company?.companyName}</p>
+                            <p>{company?.address}</p>
+                            <p>{company?.city}, {company?.state} {company?.postalCode}</p>
+                            <p>{company?.companyEmail} | {company?.phoneNumber}</p>
+                            {company?.gstNumber && <p className="font-semibold text-gray-500 mt-1">GST: {company.gstNumber}</p>}
+                        </div>
                     </div>
-                    {/* Breakdown */}
-                    <div className="space-y-2">
-                        {[
-                            { label: 'Base Salary', value: `₹${salary.baseSalary?.toLocaleString('en-IN') || 0}`, color: 'text-gray-900' },
-                            { label: 'Allowances', value: `+₹${(salary.allowances || 0).toLocaleString('en-IN')}`, color: 'text-emerald-600' },
-                            { label: 'Bonuses', value: `+₹${(salary.bonuses || 0).toLocaleString('en-IN')}`, color: 'text-emerald-600' },
-                            { label: 'Deductions', value: `-₹${(salary.deductions || 0).toLocaleString('en-IN')}`, color: 'text-red-500' },
-                        ].map(row => (
-                            <div key={row.label} className="flex justify-between text-sm py-1 border-b border-gray-50">
-                                <span className="text-gray-500">{row.label}</span>
-                                <span className={clsx('font-medium', row.color)}>{row.value}</span>
+
+                    <div className="h-px bg-gray-100 w-full" />
+
+                    {/* Employee Info */}
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Employee Details</p>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: brandColor }}>
+                                    {salary.employeeId?.name?.[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-900">{salary.employeeId?.name}</p>
+                                    <p className="text-xs text-gray-500">{salary.employeeId?.employeeId} | {salary.employeeId?.department}</p>
+                                    <p className="text-xs text-gray-500">{salary.employeeId?.position}</p>
+                                </div>
                             </div>
-                        ))}
-                        <div className="flex justify-between py-2 mt-1">
-                            <span className="font-bold text-gray-900">Net Salary</span>
-                            <span className="font-black text-xl text-gray-900">₹{salary.netSalary?.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Payment Details</p>
+                            <p className="text-xs text-gray-500"><span className="text-gray-400">Month:</span> <span className="font-bold text-gray-700">{format(new Date(salary.month), 'MMMM yyyy')}</span></p>
+                            <p className="text-xs text-gray-500"><span className="text-gray-400">Status:</span> <span className={clsx('font-bold', salary.status === 'paid' ? 'text-emerald-600' : 'text-orange-500')}>{salary.status?.toUpperCase()}</span></p>
+                            {salary.paidAt && <p className="text-xs text-gray-500"><span className="text-gray-400">Paid On:</span> {format(new Date(salary.paidAt), 'MMM d, yyyy')}</p>}
                         </div>
                     </div>
-                    {salary.notes && <p className="text-xs text-gray-400 bg-gray-50 p-3 rounded-lg">{salary.notes}</p>}
+
+                    {/* Breakdown */}
+                    <div className="rounded-2xl border border-gray-100 overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-400 uppercase">Description</th>
+                                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-400 uppercase">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                <tr className="text-gray-700 font-medium">
+                                    <td className="px-4 py-3">Base Salary</td>
+                                    <td className="px-4 py-3 text-right">₹{salary.baseSalary?.toLocaleString('en-IN')}</td>
+                                </tr>
+                                {salary.allowances > 0 && (
+                                    <tr className="text-emerald-600">
+                                        <td className="px-4 py-3">Allowances</td>
+                                        <td className="px-4 py-3 text-right">+₹{salary.allowances.toLocaleString('en-IN')}</td>
+                                    </tr>
+                                )}
+                                {salary.bonuses > 0 && (
+                                    <tr className="text-emerald-600">
+                                        <td className="px-4 py-3">Bonuses</td>
+                                        <td className="px-4 py-3 text-right">+₹{salary.bonuses.toLocaleString('en-IN')}</td>
+                                    </tr>
+                                )}
+                                {salary.deductions > 0 && (
+                                    <tr className="text-red-500">
+                                        <td className="px-4 py-3">Deductions</td>
+                                        <td className="px-4 py-3 text-right">-₹{salary.deductions.toLocaleString('en-IN')}</td>
+                                    </tr>
+                                )}
+                                <tr className="bg-gray-50/50">
+                                    <td className="px-4 py-4 font-bold text-gray-900 border-t border-gray-100">Net Payable</td>
+                                    <td className="px-4 py-4 text-right font-black text-xl text-gray-900 border-t border-gray-100">₹{salary.netSalary?.toLocaleString('en-IN')}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Signature and Footer */}
+                    <div className="flex justify-between items-end pt-4">
+                        <div className="space-y-1">
+                            {salary.notes && (
+                                <>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Notes</p>
+                                    <p className="text-xs text-gray-500 italic max-w-xs">{salary.notes}</p>
+                                </>
+                            )}
+                        </div>
+                        <div className="text-center group">
+                            {company?.signatureImage ? (
+                                <img src={company.signatureImage} alt="Signature" className="h-12 mx-auto mix-multiply" />
+                            ) : (
+                                <div className="h-12 w-24 border-b border-dashed border-gray-200 mx-auto" />
+                            )}
+                            <p className="text-xs font-bold text-gray-800 mt-1">{company?.authorizedSignatory || 'Authorized Signatory'}</p>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-tighter">Sign & Stamp</p>
+                        </div>
+                    </div>
+
+                    <div className="text-[10px] text-center text-gray-300 pt-4 border-t border-gray-50">
+                        This is a computer generated document and does not require a physical signature unless specified.
+                    </div>
                 </div>
             </div>
         </div>

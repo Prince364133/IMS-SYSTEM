@@ -21,9 +21,14 @@ async function initQueues() {
 
     // ── Email Worker ──────────────────────────────────────────────────────────
     const emailWorker = new Worker('email', async (job) => {
-        const { sendEmail } = require('../config/resend');
-        const { to, subject, html } = job.data;
-        await sendEmail({ to, subject, html });
+        const EmailService = require('./email.service');
+        const { to, subject, html, template, data } = job.data;
+
+        if (template) {
+            await EmailService.sendTransactEmail({ to, subject, template, data });
+        } else {
+            await EmailService.sendEmail({ to, subject, html });
+        }
         console.log(`[Queue] Email sent to ${to}: ${subject}`);
     }, { connection });
 
@@ -51,12 +56,15 @@ async function initQueues() {
 /**
  * Add an email job to the queue
  */
-async function queueEmail({ to, subject, html }) {
+async function queueEmail({ to, subject, html, template, data }) {
     if (!emailQueue) {
-        const { sendEmail } = require('../config/resend');
-        return sendEmail({ to, subject, html }); // fallback: send directly
+        const EmailService = require('./email.service');
+        if (template) {
+            return EmailService.sendTransactEmail({ to, subject, template, data });
+        }
+        return EmailService.sendEmail({ to, subject, html }); // fallback: send directly
     }
-    return emailQueue.add('send', { to, subject, html }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+    return emailQueue.add('send', { to, subject, html, template, data }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
 }
 
 /**

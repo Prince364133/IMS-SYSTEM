@@ -19,19 +19,32 @@ exports.register = async (req, res, next) => {
         const exists = await User.findOne({ email: email.toLowerCase() });
         if (exists) return res.status(409).json({ error: 'Email already registered' });
 
-        // Only admin can create admin/hr roles via API
-        const safeRole = ['admin', 'hr'].includes(role) && req.user?.role !== 'admin'
-            ? 'employee'
-            : (role || 'employee');
+        const userCount = await User.countDocuments();
+
+        // Only admin can create admin/hr roles via API, unless it's the very first user
+        let safeRole = (role || 'employee');
+        if (['admin', 'hr'].includes(role) && req.user?.role !== 'admin' && userCount > 0) {
+            safeRole = 'employee';
+        } else if (userCount === 0) {
+            safeRole = 'admin'; // First user is always admin
+        }
 
         const user = await User.create({ name, email, password, role: safeRole });
         const token = signAccessToken(user._id);
         const refreshToken = signRefreshToken(user._id);
 
+        // Send Welcome Email
+        try {
+            const EmailService = require('../services/email.service');
+            await EmailService.sendWelcomeEmail(user, password);
+        } catch (emailErr) {
+            console.error('Failed to send welcome email:', emailErr.message);
+        }
+
         if (req.user) {
             const Notification = require('../models/Notification');
             const { getIo } = require('../sockets');
-            const subject = encodeURIComponent('Welcome to Instaura IMS');
+            const subject = encodeURIComponent('Welcome to Internal Management System');
             const body = encodeURIComponent(`Hi ${user.name},\n\nYour account has been created.\nEmail: ${user.email}\nPassword: ${password}\n\nLogin at: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
             const actionUrl = `mailto:${user.email}?subject=${subject}&body=${body}`;
 
@@ -181,7 +194,7 @@ exports.changePassword = async (req, res, next) => {
 exports.setupMFA = async (req, res, next) => {
     try {
         const secret = totp.generateSecret();
-        const uri = totp.keyuri(req.user.email, 'Instaura IMS', secret);
+        const uri = totp.keyuri(req.user.email, 'Internal Management System', secret);
         const qrCode = await qrcode.toDataURL(uri);
         res.json({ secret, qrCode, provisioningUri: uri });
     } catch (err) { next(err); }

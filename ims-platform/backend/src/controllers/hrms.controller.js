@@ -81,3 +81,32 @@ exports.getSalaryReport = async (req, res, next) => {
         res.json({ month, salaries, totalNet, totalCount: salaries.length, paid });
     } catch (err) { next(err); }
 };
+
+exports.getWeeklyTrends = async (req, res, next) => {
+    try {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const chartData = [];
+
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            date.setHours(0, 0, 0, 0);
+
+            const nextDate = new Date(date);
+            nextDate.setDate(nextDate.getDate() + 1);
+
+            const [projects, tasks] = await Promise.all([
+                Project.countDocuments({ updatedAt: { $gte: date, $lt: nextDate } }),
+                Task.countDocuments({ updatedAt: { $gte: date, $lt: nextDate } })
+            ]);
+
+            chartData.push({
+                name: days[date.getDay()],
+                projects,
+                tasks
+            });
+        }
+
+        res.json(chartData);
+    } catch (err) { next(err); }
+};

@@ -5,8 +5,10 @@ const mongoose = require('mongoose');
 const documentSchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true },
-        cloudinaryUrl: { type: String, required: true },
-        cloudinaryPublicId: { type: String, required: true },
+        fileUrl: { type: String, required: true }, // URL to file (Cloudinary, Drive, or External)
+        fileId: { type: String, default: '' },     // ID of file (Cloudinary public_id or Google Drive fileId)
+        isLinkOnly: { type: Boolean, default: false }, // If true, it's just an external link, not managed by our storage
+        storageType: { type: String, enum: ['cloudinary', 'google_drive', 'local', 'external'], default: 'cloudinary' },
         fileType: { type: String, default: '' }, // MIME type
         fileSize: { type: Number, default: 0 }, // bytes
         folder: {

@@ -135,7 +135,7 @@ export default function CreateProjectModal({ onClose, onSuccess }: Props) {
                                 <input
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    placeholder="e.g. Instaura Website Redesign"
+                                    placeholder="e.g. Acme Website Redesign"
                                     className="input"
                                     required
                                 />

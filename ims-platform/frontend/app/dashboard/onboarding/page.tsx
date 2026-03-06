@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
+import { useSettings } from '../../../lib/settings-context';
 import { useAuth } from '../../../lib/auth-context';
 import { Loader2, CheckCircle, UploadCloud, UserCircle, ChevronRight, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -28,6 +29,8 @@ function WizardStep({ step, currentStep, icon: Icon, title, desc }: any) {
 
 export default function OnboardingPage() {
     const { user } = useAuth();
+    const { company } = useSettings();
+    const companyName = company?.companyName || 'Internal Management System';
     const [loading, setLoading] = useState(true);
     const [ob, setOb] = useState<any>(null); // Current employee's onboarding
     const [allObs, setAllObs] = useState<any[]>([]); // For HR/Admin view
@@ -151,7 +154,7 @@ export default function OnboardingPage() {
     return (
         <div className="max-w-4xl mx-auto py-6">
             <div className="text-center mb-10">
-                <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome to Instaura, {user?.name?.split(' ')[0]}! 🎉</h1>
+                <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome to {companyName}, {user?.name?.split(' ')[0]}! 🎉</h1>
                 <p className="text-lg text-gray-500">Let's get your profile set up in just a few steps.</p>
             </div>
 
@@ -224,7 +227,7 @@ export default function OnboardingPage() {
                 <div className="text-center py-20 max-w-lg mx-auto">
                     <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Onboarding Completed!</h2>
-                    <p className="text-gray-500">Your profile is 100% set up. You can now use all features of the Instaura IMS portal.</p>
+                    <p className="text-gray-500">Your profile is 100% set up. You can now use all features of the {companyName} IMS portal.</p>
                 </div>
             )}
         </div>

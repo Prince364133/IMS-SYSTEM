@@ -7,9 +7,9 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-    title: 'Instaura IMS — Internal Management System',
-    description: 'Scalable, cloud-hosted Internal Management System for Instaura.',
-    keywords: 'IMS, HRMS, project management, attendance, Instaura',
+    title: 'IMS — Internal Management System',
+    description: 'Scalable, cloud-hosted Internal Management System.',
+    keywords: 'IMS, HRMS, project management, attendance',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

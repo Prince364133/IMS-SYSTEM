@@ -9,7 +9,7 @@ const {
     setupMFA, enableMFA, verifyMFA,
 } = require('../controllers/auth.controller');
 
-router.post('/register', protect, register);
+router.post('/register', register);
 router.post('/login', login);
 router.post('/logout', protect, logout);
 router.post('/refresh', refreshToken);

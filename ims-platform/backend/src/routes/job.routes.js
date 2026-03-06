@@ -63,13 +63,22 @@ router.put('/applications/:appId', protect, requireHR, async (req, res, next) =>
             // Check if user already created for this applicant email
             let user = await User.findOne({ email: app.applicantEmail });
             if (!user) {
+                const generatedPassword = app.applicantName.split(' ')[0].toLowerCase() + Math.random().toString(36).slice(-4) + '!';
                 user = await User.create({
                     name: app.applicantName,
                     email: app.applicantEmail,
-                    password: app.applicantName.split(' ')[0].toLowerCase() + '123!', // generated pass
+                    password: generatedPassword,
                     role: 'employee',
                     isActive: true,
                 });
+
+                // Send Welcome Email with Credentials
+                try {
+                    const EmailService = require('../services/email.service');
+                    await EmailService.sendWelcomeEmail(user, generatedPassword);
+                } catch (emailErr) {
+                    console.error('Failed to send automated welcome email:', emailErr.message);
+                }
 
                 await Onboarding.create({
                     employeeId: user._id,

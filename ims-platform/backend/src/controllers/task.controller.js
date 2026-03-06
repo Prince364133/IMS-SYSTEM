@@ -2,6 +2,8 @@
 
 const Task = require('../models/Task');
 const Notification = require('../models/Notification');
+const Project = require('../models/Project');
+const EmailService = require('../services/email.service');
 const { getIo, onlineUsers } = require('../sockets');
 const { logAction } = require('../middleware/audit');
 
@@ -34,6 +36,8 @@ exports.createTask = async (req, res, next) => {
 
         // Notify assignee if someone else created it
         if (task.assigneeId && task.assigneeId.toString() !== req.user._id.toString()) {
+            const populatedTask = await Task.findById(task._id).populate('assigneeId').populate('projectId');
+
             const notif = await Notification.create({
                 userId: task.assigneeId,
                 type: 'task_assigned',
@@ -41,6 +45,18 @@ exports.createTask = async (req, res, next) => {
                 message: `You were assigned to: ${task.title}`,
                 actionUrl: '/dashboard/tasks'
             });
+
+            // Send Email
+            if (populatedTask.assigneeId?.email) {
+                EmailService.sendTaskAssignedEmail(
+                    populatedTask.assigneeId.email,
+                    populatedTask.assigneeId.name,
+                    task.title,
+                    populatedTask.projectId?.name || 'Personal/Misc',
+                    `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/tasks`
+                ).catch(e => console.error('Task Assignment Email Error:', e.message));
+            }
+
             try {
                 const io = getIo();
                 const sockets = onlineUsers.get(task.assigneeId.toString());
@@ -74,6 +90,8 @@ exports.updateTask = async (req, res, next) => {
 
         // Notify if assignee changed
         if (req.body.assigneeId && req.body.assigneeId !== oldTask.assigneeId?.toString() && req.body.assigneeId !== req.user._id.toString()) {
+            const populatedTask = await Task.findById(task._id).populate('assigneeId').populate('projectId');
+
             const notif = await Notification.create({
                 userId: req.body.assigneeId,
                 type: 'task_assigned',
@@ -81,6 +99,18 @@ exports.updateTask = async (req, res, next) => {
                 message: `You were reassigned to: ${task.title}`,
                 actionUrl: '/dashboard/tasks'
             });
+
+            // Send Email
+            if (populatedTask.assigneeId?.email) {
+                EmailService.sendTaskAssignedEmail(
+                    populatedTask.assigneeId.email,
+                    populatedTask.assigneeId.name,
+                    task.title,
+                    populatedTask.projectId?.name || 'Personal/Misc',
+                    `${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard/tasks`
+                ).catch(e => console.error('Task Reassignment Email Error:', e.message));
+            }
+
             try {
                 const io = getIo();
                 const sockets = onlineUsers.get(req.body.assigneeId);
