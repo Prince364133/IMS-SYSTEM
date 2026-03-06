@@ -3,23 +3,23 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 
-const superAdminAuth = require('../../middleware/superadmin-auth');
-const superAdminAudit = require('../../middleware/superadmin-audit');
+const superAdminAuth = require('../middleware/superadmin-auth');
+const superAdminAudit = require('../middleware/superadmin-audit');
 
-const authCtrl = require('../../controllers/superadmin/auth.controller');
-const overviewCtrl = require('../../controllers/superadmin/overview.controller');
-const companyCtrl = require('../../controllers/superadmin/company.controller');
-const userCtrl = require('../../controllers/superadmin/user.controller');
-const planCtrl = require('../../controllers/superadmin/plan.controller');
-const couponCtrl = require('../../controllers/superadmin/coupon.controller');
-const subscriptionCtrl = require('../../controllers/superadmin/subscription.controller');
-const paymentCtrl = require('../../controllers/superadmin/payment.controller');
-const settingsCtrl = require('../../controllers/superadmin/settings.controller');
-const featureFlagCtrl = require('../../controllers/superadmin/featureflag.controller');
-const announcementCtrl = require('../../controllers/superadmin/announcement.controller');
-const ticketCtrl = require('../../controllers/superadmin/supportticket.controller');
-const logCtrl = require('../../controllers/superadmin/log.controller');
-const databaseCtrl = require('../../controllers/superadmin/database.controller');
+const authCtrl = require('../controllers/superadmin/auth.controller');
+const overviewCtrl = require('../controllers/superadmin/overview.controller');
+const companyCtrl = require('../controllers/superadmin/company.controller');
+const userCtrl = require('../controllers/superadmin/user.controller');
+const planCtrl = require('../controllers/superadmin/plan.controller');
+const couponCtrl = require('../controllers/superadmin/coupon.controller');
+const subscriptionCtrl = require('../controllers/superadmin/subscription.controller');
+const paymentCtrl = require('../controllers/superadmin/payment.controller');
+const settingsCtrl = require('../controllers/superadmin/settings.controller');
+const featureFlagCtrl = require('../controllers/superadmin/featureflag.controller');
+const announcementCtrl = require('../controllers/superadmin/announcement.controller');
+const ticketCtrl = require('../controllers/superadmin/supportticket.controller');
+const logCtrl = require('../controllers/superadmin/log.controller');
+const databaseCtrl = require('../controllers/superadmin/database.controller');
 
 const saLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Too many login attempts' } });
 
