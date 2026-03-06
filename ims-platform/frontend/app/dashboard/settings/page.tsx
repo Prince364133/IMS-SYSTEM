@@ -301,6 +301,9 @@ export default function SettingsPage() {
     const [storageMode, setStorageMode] = useState<'cloudinary' | 'google_drive' | 'local'>(settings?.storageMode || 'cloudinary');
     const [googleDriveServiceAccount, setGoogleDriveServiceAccount] = useState(settings?.googleDriveServiceAccount || '');
     const [googleDriveFolderId, setGoogleDriveFolderId] = useState(settings?.googleDriveFolderId || '');
+    const [cloudinaryCloudName, setCloudinaryCloudName] = useState(settings?.cloudinaryCloudName || '');
+    const [cloudinaryApiKey, setCloudinaryApiKey] = useState(settings?.cloudinaryApiKey || '');
+    const [cloudinaryApiSecret, setCloudinaryApiSecret] = useState(settings?.cloudinaryApiSecret || '');
     const [testingStorage, setTestingStorage] = useState(false);
     const [storageTestStatus, setStorageTestStatus] = useState<'success' | 'failure' | 'none'>(settings?.lastStorageTestStatus || 'none');
 
@@ -340,6 +343,9 @@ export default function SettingsPage() {
             setStorageMode(settings.storageMode || 'cloudinary');
             setGoogleDriveServiceAccount(settings.googleDriveServiceAccount || '');
             setGoogleDriveFolderId(settings.googleDriveFolderId || '');
+            setCloudinaryCloudName(settings.cloudinaryCloudName || '');
+            setCloudinaryApiKey(settings.cloudinaryApiKey || '');
+            setCloudinaryApiSecret(settings.cloudinaryApiSecret || '');
             setStorageTestStatus(settings.lastStorageTestStatus || 'none');
         }
     }, [settings]);
@@ -352,7 +358,8 @@ export default function SettingsPage() {
                 webhookUrl, webhookSecret,
                 smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, emailFrom,
                 aiProvider, openaiKey, groqKey, geminiKey,
-                storageMode, googleDriveServiceAccount, googleDriveFolderId
+                storageMode, googleDriveServiceAccount, googleDriveFolderId,
+                cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret
             });
             await refreshSettings();
             toast.success('Settings updated');
@@ -366,7 +373,8 @@ export default function SettingsPage() {
         try {
             // First save
             await api.put('/api/settings', {
-                storageMode, googleDriveServiceAccount, googleDriveFolderId
+                storageMode, googleDriveServiceAccount, googleDriveFolderId,
+                cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret
             });
 
             const { data } = await api.post('/api/settings/test-storage');
@@ -1229,14 +1237,57 @@ export default function SettingsPage() {
                                         )}
 
                                         {storageMode === 'cloudinary' && (
-                                            <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl">
-                                                <div className="flex gap-3">
-                                                    <Activity className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div>
+                                                    <label className="label">
+                                                        Cloudinary Cloud Name
+                                                        <InfoLink href="https://console.cloudinary.com/console/settings/account" label="Cloudinary Console" />
+                                                    </label>
+                                                    <input
+                                                        value={cloudinaryCloudName}
+                                                        onChange={e => setCloudinaryCloudName(e.target.value)}
+                                                        placeholder="e.g. dxyz123abc"
+                                                        className="input bg-white"
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <p className="text-sm font-semibold text-orange-800">Cloudinary Config</p>
-                                                        <p className="text-xs text-orange-700 mt-0.5">
-                                                            Cloudinary is currently configured via environment variables.
-                                                            Use Google Drive if you need dynamic frontend configuration.
+                                                        <label className="label">API Key</label>
+                                                        <input
+                                                            value={cloudinaryApiKey}
+                                                            onChange={e => setCloudinaryApiKey(e.target.value)}
+                                                            placeholder="1234567890..."
+                                                            className="input bg-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="label">API Secret</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type={showPw ? 'text' : 'password'}
+                                                                value={cloudinaryApiSecret}
+                                                                onChange={e => setCloudinaryApiSecret(e.target.value)}
+                                                                placeholder="••••••••••••"
+                                                                className="input bg-white pr-10"
+                                                            />
+                                                            <button onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                                                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 flex gap-3 animate-in fade-in duration-500">
+                                                    <Info className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
+                                                    <div className="space-y-2">
+                                                        <p className="text-sm font-semibold text-indigo-900">How to get these credentials?</p>
+                                                        <ol className="text-xs text-indigo-800 space-y-1.5 list-decimal list-inside opacity-90">
+                                                            <li>Login to your <a href="https://console.cloudinary.com/" target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-indigo-600 inline-flex items-center gap-0.5" title="Open Cloudinary Console">Cloudinary Console <ExternalLink className="w-3 h-3" /></a></li>
+                                                            <li>On the <b>Dashboard</b>, look for "Account Details".</li>
+                                                            <li>Copy the <b>Cloud Name</b>, <b>API Key</b>, and <b>API Secret</b>.</li>
+                                                            <li>Paste them above and click <b>Test Connection</b>.</li>
+                                                        </ol>
+                                                        <p className="text-[11px] text-indigo-600 pt-1 italic">
+                                                            Tip: Use Cloudinary for profile pictures and company branding. Google Drive remains your primary storage for business documents.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1250,7 +1301,7 @@ export default function SettingsPage() {
                                             </button>
                                             <button
                                                 onClick={testStorageConnection}
-                                                disabled={testingStorage || (storageMode === 'google_drive' && !googleDriveServiceAccount)}
+                                                disabled={testingStorage || (storageMode === 'google_drive' && !googleDriveServiceAccount) || (storageMode === 'cloudinary' && !cloudinaryCloudName)}
                                                 className={clsx(
                                                     "flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl border text-sm font-medium transition-all",
                                                     storageTestStatus === 'success' ? "border-green-200 bg-green-50 text-green-700 font-bold" : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
@@ -1320,6 +1371,6 @@ export default function SettingsPage() {
                     {tab === 'audit' && user?.role === 'admin' && <AuditTab />}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -7,7 +7,7 @@ import {
     HelpCircle, Zap, ExternalLink, Globe,
     Shield, ArrowRight, MessageCircle, Info, ShieldCheck,
     ChevronDown, Plus, Users, Clock, Brain, Mail, Server, Database,
-    DollarSign, FileText, Calendar, BarChart2 as BarChart, Box, CreditCard
+    DollarSign, FileText, Calendar, BarChart2 as BarChart, Box, CreditCard, Palette
 } from 'lucide-react';
 import { useSettings } from '../../../lib/settings-context';
 import Link from 'next/link';
@@ -529,15 +529,36 @@ export default function DocsPage() {
                                     <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-600 ring-4 ring-white"></div>
                                     <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                                         <Server className="w-5 h-5 text-blue-500" />
-                                        3. Activate Cloud File Storage
+                                        3. Activate Cloud file Storage (Google Drive)
                                     </h3>
                                     <div className="prose prose-sm text-gray-600 space-y-3">
-                                        <p>Switch from Local Storage to <strong>Google Drive</strong> to enable global file access.</p>
+                                        <p>Switch from Local Storage to <strong>Google Drive</strong> to enable global document access and secure storage for business files.</p>
                                         <ul className="list-disc pl-4 space-y-1">
                                             <li>Create a Service Account in [Google Cloud Console](https://console.cloud.google.com/).</li>
                                             <li>Enable "Google Drive API" for your project.</li>
-                                            <li>Download the JSON key file and paste its contents into the **Service Account JSON** field in Settings.</li>
+                                            <li>Download the JSON key file and paste its contents into the <strong>Service Account JSON</strong> field in Settings.</li>
                                         </ul>
+                                    </div>
+                                </div>
+
+                                {/* Cloudinary Activation */}
+                                <div className="relative pl-8 border-l-2 border-indigo-100">
+                                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-purple-600 ring-4 ring-white"></div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                        <Palette className="w-5 h-5 text-purple-500" />
+                                        4. Cloudinary Image Optimization
+                                    </h3>
+                                    <div className="prose prose-sm text-gray-600 space-y-3">
+                                        <p>Enable <strong>Cloudinary</strong> to handle profile pictures, logos, and company branding with high-performance delivery.</p>
+                                        <ol className="list-decimal pl-4 space-y-1">
+                                            <li>Create an account at [Cloudinary](https://cloudinary.com/).</li>
+                                            <li>Access the <strong>Dashboard</strong> to find your Cloud Name, API Key, and API Secret.</li>
+                                            <li>Paste these into the **Storage Config** section in Dashboard Settings.</li>
+                                            <li>Test the connection to ensure your branding assets load instantly across all devices.</li>
+                                        </ol>
+                                        <div className="bg-purple-50 p-3 rounded-lg text-purple-800 text-xs shadow-sm border border-purple-100/50">
+                                            <strong>Why Cloudinary?</strong> It optimizes images on-the-fly, reducing page load times and ensuring profile photos look crisp on all screen sizes.
+                                        </div>
                                     </div>
                                 </div>
                             </div>

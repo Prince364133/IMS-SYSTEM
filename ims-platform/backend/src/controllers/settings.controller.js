@@ -60,7 +60,8 @@ exports.updateSettings = async (req, res) => {
             companyName, logoUrl, themeColor, webhookUrl, webhookSecret,
             smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, emailFrom,
             aiProvider, openaiKey, groqKey, geminiKey,
-            storageMode, googleDriveServiceAccount, googleDriveFolderId
+            storageMode, googleDriveServiceAccount, googleDriveFolderId,
+            cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret
         } = req.body;
 
         let settings = await Settings.findOne();
@@ -92,6 +93,9 @@ exports.updateSettings = async (req, res) => {
         if (storageMode !== undefined) settings.storageMode = storageMode;
         if (googleDriveServiceAccount !== undefined) settings.googleDriveServiceAccount = googleDriveServiceAccount;
         if (googleDriveFolderId !== undefined) settings.googleDriveFolderId = googleDriveFolderId;
+        if (cloudinaryCloudName !== undefined) settings.cloudinaryCloudName = cloudinaryCloudName;
+        if (cloudinaryApiKey !== undefined) settings.cloudinaryApiKey = cloudinaryApiKey;
+        if (cloudinaryApiSecret !== undefined) settings.cloudinaryApiSecret = cloudinaryApiSecret;
 
         await settings.save();
         res.json({ settings, message: 'Settings updated successfully' });
@@ -245,8 +249,19 @@ exports.testStorageConnection = async (req, res) => {
         }
 
         if (settings.storageMode === 'cloudinary') {
-            const { cloudinary } = require('../config/cloudinary');
-            const result = await cloudinary.api.ping();
+            const { configureCloudinary } = require('../config/cloudinary');
+
+            if (!settings.cloudinaryCloudName || !settings.cloudinaryApiKey || !settings.cloudinaryApiSecret) {
+                throw new Error('Cloudinary credentials are not fully configured in settings');
+            }
+
+            const dynamicCloudinary = configureCloudinary({
+                cloudName: settings.cloudinaryCloudName,
+                apiKey: settings.cloudinaryApiKey,
+                apiSecret: settings.cloudinaryApiSecret
+            });
+
+            const result = await dynamicCloudinary.api.ping();
             if (result.status === 'ok') {
                 settings.lastStorageTestStatus = 'success';
                 settings.lastStorageTestDate = new Date();

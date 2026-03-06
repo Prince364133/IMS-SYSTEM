@@ -414,8 +414,6 @@ function LoginForm() {
 
 export default function LoginPage() {
     return (
-        <AuthProvider>
-            <LoginForm />
-        </AuthProvider>
+        <LoginForm />
     );
 }

@@ -32,6 +32,9 @@ interface Settings {
     storageMode?: 'cloudinary' | 'google_drive' | 'local';
     googleDriveServiceAccount?: string;
     googleDriveFolderId?: string;
+    cloudinaryCloudName?: string;
+    cloudinaryApiKey?: string;
+    cloudinaryApiSecret?: string;
     lastStorageTestStatus?: 'success' | 'failure' | 'none';
     lastStorageTestDate?: Date | string;
     lastStorageTestError?: string;
@@ -112,6 +115,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
 
     function applyThemeColor(hex: string) {
+        if (typeof window === 'undefined') return;
         const rgb = hexToRgb(hex);
         if (!rgb) return;
         // Primary channels — used by Tailwind: bg-primary, text-primary, ring-primary, etc.
@@ -138,25 +142,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             const newCompany = companyRes.data.config || null;
             setCompany(newCompany);
 
-            // Brand logic — apply theme color as CSS variables for Tailwind
-            const themeColor = newCompany?.brandColor || newSettings.themeColor;
-            if (themeColor) {
-                applyThemeColor(themeColor);
-            }
-
-            // Update Page Title and Favicon
-            const title = newCompany?.companyName || newSettings.companyName || 'Internal Management System';
-            document.title = `${title} — Management System`;
-
-            const favicon = newCompany?.companyLogo || newSettings.logoUrl;
-            if (favicon) {
-                let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-                if (!link) {
-                    link = document.createElement('link');
-                    link.rel = 'icon';
-                    document.getElementsByTagName('head')[0].appendChild(link);
+            if (typeof window !== 'undefined') {
+                // Brand logic — apply theme color as CSS variables for Tailwind
+                const themeColor = newCompany?.brandColor || newSettings.themeColor;
+                if (themeColor) {
+                    applyThemeColor(themeColor);
                 }
-                link.href = favicon;
+
+                // Update Page Title and Favicon
+                const title = newCompany?.companyName || newSettings.companyName || 'Internal Management System';
+                document.title = `${title} — Management System`;
+
+                const favicon = newCompany?.companyLogo || newSettings.logoUrl;
+                if (favicon) {
+                    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.getElementsByTagName('head')[0].appendChild(link);
+                    }
+                    link.href = favicon;
+                }
             }
         } catch (error) {
             console.error('Failed to fetch settings/company-config:', error);

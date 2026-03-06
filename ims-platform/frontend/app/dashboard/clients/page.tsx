@@ -115,8 +115,12 @@ export default function ClientsPage() {
                         >
                             {/* Header */}
                             <div className="flex items-start gap-3 mb-4">
-                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0 border border-indigo-100">
-                                    <span className="text-indigo-600 font-bold text-lg">{client.name?.[0]?.toUpperCase()}</span>
+                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0 border border-indigo-100 overflow-hidden">
+                                    {client.logoUrl ? (
+                                        <img src={client.logoUrl} alt={client.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-indigo-600 font-bold text-lg">{client.name?.[0]?.toUpperCase()}</span>
+                                    )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">

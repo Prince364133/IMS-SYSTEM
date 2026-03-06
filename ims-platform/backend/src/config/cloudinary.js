@@ -2,29 +2,36 @@
 
 const cloudinary = require('cloudinary').v2;
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-});
-
-if (process.env.CLOUDINARY_CLOUD_NAME) {
-    console.log('✅ Cloudinary configured');
-} else {
-    console.warn('⚠️  Cloudinary credentials not set — file uploads will fail');
+/**
+ * Configure cloudinary with provided credentials or env fallback
+ */
+function configureCloudinary(config = {}) {
+    cloudinary.config({
+        cloud_name: config.cloudName || process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: config.apiKey || process.env.CLOUDINARY_API_KEY,
+        api_secret: config.apiSecret || process.env.CLOUDINARY_API_SECRET,
+        secure: true,
+    });
+    return cloudinary;
 }
+
+// Initial config with env fallback
+configureCloudinary();
 
 /**
  * Upload buffer to Cloudinary
  * @param {Buffer} buffer
- * @param {Object} options - { folder, resourceType }
+ * @param {Object} options - { folder, resourceType, config }
  * @returns {Promise<Object>} Cloudinary upload result
  */
 async function uploadToCloudinary(buffer, options = {}) {
-    const { folder = 'ims', resourceType = 'auto' } = options;
+    const { folder = 'ims', resourceType = 'auto', config = {} } = options;
+
+    // Ensure we are using the latest config if provided
+    const instance = config.cloudName ? configureCloudinary(config) : cloudinary;
+
     return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
+        const stream = instance.uploader.upload_stream(
             { folder, resource_type: resourceType, quality: 'auto', fetch_format: 'auto' },
             (err, result) => {
                 if (err) return reject(err);
@@ -38,8 +45,9 @@ async function uploadToCloudinary(buffer, options = {}) {
 /**
  * Delete a file from Cloudinary by public_id
  */
-async function deleteFromCloudinary(publicId, resourceType = 'image') {
-    return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+async function deleteFromCloudinary(publicId, resourceType = 'image', config = {}) {
+    const instance = config.cloudName ? configureCloudinary(config) : cloudinary;
+    return instance.uploader.destroy(publicId, { resource_type: resourceType });
 }
 
-module.exports = { cloudinary, uploadToCloudinary, deleteFromCloudinary };
+module.exports = { cloudinary, configureCloudinary, uploadToCloudinary, deleteFromCloudinary };

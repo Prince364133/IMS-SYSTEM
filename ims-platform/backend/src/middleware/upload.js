@@ -77,6 +77,11 @@ function handleUpload(folder = 'general') {
                     const cloudResult = await uploadToCloudinary(req.file.buffer, {
                         folder: `ims/${folder}`,
                         resourceType: req.file.mimetype.startsWith('image') ? 'image' : 'raw',
+                        config: {
+                            cloudName: settings.cloudinaryCloudName,
+                            apiKey: settings.cloudinaryApiKey,
+                            apiSecret: settings.cloudinaryApiSecret
+                        }
                     });
                     result = {
                         fileUrl: cloudResult.secure_url,

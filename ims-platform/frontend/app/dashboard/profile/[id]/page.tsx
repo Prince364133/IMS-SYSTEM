@@ -168,7 +168,9 @@ export default function UnifiedProfilePage() {
                             {profileUser.photoUrl ? (
                                 <img src={profileUser.photoUrl} alt={profileUser.name} className="w-full h-full object-cover" />
                             ) : (
-                                <User className="w-16 h-16 text-indigo-300" />
+                                <span className="text-4xl font-bold text-indigo-600">
+                                    {profileUser.name?.[0]?.toUpperCase()}
+                                </span>
                             )}
                         </div>
                         {canEdit && (
