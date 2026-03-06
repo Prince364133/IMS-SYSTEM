@@ -47,9 +47,11 @@ function Sidebar() {
     const { user, logout } = useAuth();
     const { settings, company } = useSettings();
 
-    const filteredNav = navigation.filter(
-        (item) => user && item.roles.includes(user.role)
-    );
+    const filteredNav = navigation.filter((item) => {
+        if (!user) return false;
+        const userRoles = user.roles || [user.role];
+        return userRoles.some(r => item.roles.includes(r));
+    });
 
     return (
         <aside className="w-[260px] h-full flex flex-col bg-white border-r border-gray-100 overflow-y-auto fixed top-0 left-0 z-30">

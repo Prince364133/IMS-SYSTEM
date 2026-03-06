@@ -109,6 +109,7 @@ app.use('/health', healthRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/leaves', leaveRoutes);
+app.use('/api/public', require('./src/routes/public.routes'));
 app.use('/api/emails', require('./src/routes/email.routes'));
 app.use('/api/audit', require('./src/routes/audit.routes'));
 app.use('/api/calendar', require('./src/routes/calendar.routes'));

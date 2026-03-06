@@ -82,6 +82,15 @@ export default function EmployeeProfilePage() {
         finally { setDeactivating(false); }
     }
 
+    async function handleDelete() {
+        if (!confirm('Are you SURE you want to permanently delete this user? This action cannot be undone.')) return;
+        try {
+            await api.delete(`/api/users/${id}`);
+            toast.success('User deleted successfully');
+            router.push('/dashboard/employees');
+        } catch { toast.error('Failed to delete user'); }
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-32">
@@ -151,18 +160,30 @@ export default function EmployeeProfilePage() {
                                 <p className="text-gray-500 text-sm mt-0.5">{emp.position || 'No position set'}</p>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className={clsx('badge', ROLE_COLORS[emp.role] || 'badge-gray')}>{emp.role}</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {(emp.roles || [emp.role]).map((r: string) => (
+                                        <span key={r} className={clsx('badge', ROLE_COLORS[r] || 'badge-gray')}>{r}</span>
+                                    ))}
+                                </div>
                                 {(user?.role === 'admin' || user?.role === 'hr') && (
                                     <>
                                         <button onClick={() => setShowEdit(true)} className="btn-secondary text-xs"><Edit2 className="w-3.5 h-3.5" />Edit</button>
                                         <button
                                             onClick={handleToggleActive}
                                             disabled={deactivating}
-                                            className={clsx('btn-secondary text-xs', emp.isActive === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-red-500 border-red-200 hover:bg-red-50')}
+                                            className={clsx('btn-secondary text-xs', emp.isActive === false ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50' : 'text-amber-500 border-amber-200 hover:bg-amber-50')}
                                         >
                                             {deactivating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : emp.isActive === false ? <Power className="w-3.5 h-3.5" /> : <PowerOff className="w-3.5 h-3.5" />}
                                             {emp.isActive === false ? 'Activate' : 'Deactivate'}
                                         </button>
+                                        {user?.role === 'admin' && (
+                                            <button
+                                                onClick={handleDelete}
+                                                className="btn-secondary text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                            >
+                                                <AlertCircle className="w-3.5 h-3.5" /> Delete User
+                                            </button>
+                                        )}
                                     </>
                                 )}
                             </div>

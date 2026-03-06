@@ -12,10 +12,10 @@ const userSchema = new mongoose.Schema(
             unique: true, lowercase: true, trim: true,
         },
         password: { type: String, required: [true, 'Password is required'], minlength: 6, select: false },
-        role: {
-            type: String,
+        roles: {
+            type: [String],
             enum: ['admin', 'manager', 'hr', 'employee', 'client'],
-            default: 'employee',
+            default: ['employee'],
         },
 
         // ── Profile ────────────────────────────────────────────────────────────────
@@ -49,11 +49,11 @@ const userSchema = new mongoose.Schema(
 // ── Indexes ───────────────────────────────────────────────────────────────────
 userSchema.index({ email: 1 });
 userSchema.index({ employeeId: 1 }, { sparse: true, unique: true });
-userSchema.index({ role: 1 });
-userSchema.index({ isActive: 1, deletedAt: 1 });
-
-// ── Pre-save: hash password ───────────────────────────────────────────────────
+// ── Pre-save: Ensure roles is array and handle single role input ───────────
 userSchema.pre('save', async function (next) {
+    if (this.role && (!this.roles || this.roles.length === 0)) {
+        this.roles = [this.role];
+    }
     if (!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
     next();
@@ -64,6 +64,16 @@ userSchema.methods.matchPassword = async function (entered) {
     return bcrypt.compare(entered, this.password);
 };
 
+// ── Virtual: role (for backward compatibility) ────────────────────────────────
+userSchema.virtual('role')
+    .get(function () {
+        return this.roles && this.roles.length > 0 ? this.roles[0] : 'employee';
+    })
+    .set(function (val) {
+        if (!this.roles) this.roles = [];
+        if (!this.roles.includes(val)) this.roles.push(val);
+    });
+
 // ── Virtual: fullName alias ───────────────────────────────────────────────────
 userSchema.virtual('fullName').get(function () { return this.name; });
 
@@ -72,5 +82,11 @@ userSchema.pre(/^find/, function (next) {
     if (!this._conditions.deletedAt) this.where({ deletedAt: null });
     next();
 });
+
+// ── Ensure virtuals are included in JSON/Object ──────────────────────────────
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+
+userSchema.index({ roles: 1 });
 
 module.exports = mongoose.model('User', userSchema);

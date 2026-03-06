@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import api from '../lib/api';
-import { X, Briefcase, MapPin, Users, Calendar, AlignLeft, Tag, Loader2 } from 'lucide-react';
+import { X, Briefcase, MapPin, Users, Calendar, AlignLeft, Tag, Loader2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -25,10 +25,35 @@ export default function PostJobModal({ onClose, onSuccess, editJob }: Props) {
         location: editJob?.location || '',
         description: editJob?.description || '',
         requirements: editJob?.requirements || '',
+        roleCategory: editJob?.roleCategory || 'Engineering',
         openings: editJob?.openings || 1,
         deadline: editJob?.deadline ? editJob.deadline.slice(0, 10) : '',
         skills: editJob?.skills || [] as string[],
+        customFields: editJob?.customFields || [] as { label: string; name: string; type: string; required: boolean }[],
     });
+
+    const categories = ['Engineering', 'Design', 'Marketing', 'Sales', 'HR', 'Finance', 'Support', 'Management'];
+
+    function addCustomField() {
+        setForm(prev => ({
+            ...prev,
+            customFields: [...prev.customFields, { label: '', name: '', type: 'text', required: false }]
+        }));
+    }
+
+    function removeCustomField(idx: number) {
+        setForm(prev => ({
+            ...prev,
+            customFields: prev.customFields.filter((_, i) => i !== idx)
+        }));
+    }
+
+    function updateCustomField(idx: number, key: string, val: any) {
+        setForm(prev => ({
+            ...prev,
+            customFields: prev.customFields.map((f, i) => i === idx ? { ...f, [key]: val } : f)
+        }));
+    }
 
     const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
         setForm(prev => ({ ...prev, [k]: e.target.value }));
@@ -93,10 +118,9 @@ export default function PostJobModal({ onClose, onSuccess, editJob }: Props) {
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="label">Department</label>
-                            <select value={form.department} onChange={set('department')} className="select">
-                                <option value="">Select department</option>
-                                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                            <label className="label">Role Category *</label>
+                            <select value={form.roleCategory} onChange={set('roleCategory')} className="select" required>
+                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
                         <div>
@@ -132,8 +156,73 @@ export default function PostJobModal({ onClose, onSuccess, editJob }: Props) {
                         </div>
                     </div>
 
-                    <div>
-                        <label className="label">Description</label>
+                    {/* Dynamic Application Form Builder */}
+                    <div className="pt-4 border-t border-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                            <label className="label m-0">Dynamic Application Form</label>
+                            <button type="button" onClick={addCustomField} className="text-xs text-indigo-600 font-medium hover:underline flex items-center gap-1">
+                                <Plus className="w-3 h-3" /> Add Field
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            {form.customFields.map((field, idx) => (
+                                <div key={idx} className="bg-gray-50 rounded-xl p-3 border border-gray-100 relative group">
+                                    <button
+                                        type="button"
+                                        onClick={() => removeCustomField(idx)}
+                                        className="absolute -top-2 -right-2 w-5 h-5 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                    <div className="grid grid-cols-12 gap-2">
+                                        <div className="col-span-12 sm:col-span-5">
+                                            <input
+                                                value={field.label}
+                                                onChange={e => {
+                                                    updateCustomField(idx, 'label', e.target.value);
+                                                    updateCustomField(idx, 'name', e.target.value.toLowerCase().replace(/\s+/g, '_'));
+                                                }}
+                                                placeholder="Field Label (e.g. Portfolio Link)"
+                                                className="input text-xs"
+                                            />
+                                        </div>
+                                        <div className="col-span-6 sm:col-span-4">
+                                            <select
+                                                value={field.type}
+                                                onChange={e => updateCustomField(idx, 'type', e.target.value)}
+                                                className="select text-xs h-9"
+                                            >
+                                                <option value="text">Text</option>
+                                                <option value="textarea">Long Text</option>
+                                                <option value="number">Number</option>
+                                                <option value="url">URL</option>
+                                                <option value="file">File Upload</option>
+                                            </select>
+                                        </div>
+                                        <div className="col-span-6 sm:col-span-3 flex items-center px-1">
+                                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={field.required}
+                                                    onChange={e => updateCustomField(idx, 'required', e.target.checked)}
+                                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <span className="text-[10px] font-medium text-gray-500 uppercase">Required</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {form.customFields.length === 0 && (
+                                <p className="text-[10px] text-gray-400 italic text-center py-2 bg-gray-50/50 rounded-lg border border-dashed border-gray-100">
+                                    No custom fields yet. Only basic details will be requested.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="pt-4">
+                        <label className="label">Job Description</label>
                         <textarea value={form.description} onChange={set('description')} placeholder="Describe the role..." rows={3} className="input resize-none" />
                     </div>
 

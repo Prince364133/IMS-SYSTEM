@@ -36,14 +36,18 @@ exports.getUserById = async (req, res, next) => {
 exports.updateUser = async (req, res, next) => {
     try {
         const { id } = req.params;
-        // Only admin can change roles; employees can only update their own profile
-        if (req.user.role !== 'admin' && req.user._id.toString() !== id) {
-            return res.status(403).json({ error: 'Access denied' });
-        }
-
         const forbidden = ['password', 'email', 'refreshTokens', 'mfaSecret'];
-        if (req.user.role !== 'admin') forbidden.push('role', 'salary', 'employeeId');
+        if (req.user.role !== 'admin') {
+            forbidden.push('roles', 'role', 'salary', 'employeeId');
+        }
         forbidden.forEach((f) => delete req.body[f]);
+
+        // Handle multi-role vs single-role input
+        if (req.body.roles && !Array.isArray(req.body.roles)) {
+            req.body.roles = [req.body.roles];
+        } else if (req.body.role && !req.body.roles) {
+            req.body.roles = [req.body.role];
+        }
 
         const user = await User.findByIdAndUpdate(id, req.body, { new: true, runValidators: true }).lean();
         if (!user) return res.status(404).json({ error: 'User not found' });

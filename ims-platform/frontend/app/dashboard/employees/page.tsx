@@ -102,7 +102,13 @@ export default function EmployeesPage() {
                                         <td className="font-mono text-xs text-gray-500">{emp.employeeId || '—'}</td>
                                         <td className="text-gray-600">{emp.department || '—'}</td>
                                         <td className="text-gray-600">{emp.position || '—'}</td>
-                                        <td><span className={clsx('badge', ROLE_COLORS[emp.role] || 'badge-gray')}>{emp.role}</span></td>
+                                        <td>
+                                            <div className="flex flex-wrap gap-1">
+                                                {(emp.roles || [emp.role]).map((r: string) => (
+                                                    <span key={r} className={clsx('badge', ROLE_COLORS[r] || 'badge-gray text-[10px]')}>{r}</span>
+                                                ))}
+                                            </div>
+                                        </td>
                                         <td><span className={clsx('badge', emp.isActive ? 'badge-green' : 'badge-red')}>{emp.isActive ? 'Active' : 'Inactive'}</span></td>
                                     </tr>
                                 ))}

@@ -45,6 +45,7 @@ const settingsSchema = new mongoose.Schema({
     storageMode: { type: String, enum: ['cloudinary', 'google_drive', 'local'], default: 'cloudinary' },
     googleDriveServiceAccount: { type: String, default: '' }, // Stringified JSON
     googleDriveFolderId: { type: String, default: '' },
+    recruitmentApiKey: { type: String, default: '' },
     lastStorageTestStatus: { type: String, enum: ['success', 'failure', 'none'], default: 'none' },
     lastStorageTestDate: { type: Date },
     lastStorageTestError: { type: String, default: '' },

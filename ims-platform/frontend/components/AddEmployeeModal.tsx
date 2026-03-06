@@ -21,13 +21,22 @@ export default function AddEmployeeModal({ onClose, onSuccess, editUser }: Props
         name: editUser?.name || '',
         email: editUser?.email || '',
         password: '',
-        role: editUser?.role || 'employee',
+        roles: editUser?.roles || (editUser?.role ? [editUser.role] : ['employee']),
         department: editUser?.department || '',
         position: editUser?.position || '',
         salary: editUser?.salary || '',
         phone: editUser?.phone || '',
         joiningDate: editUser?.joiningDate ? editUser.joiningDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
     });
+
+    const toggleRole = (r: string) => {
+        setForm(prev => {
+            const roles = prev.roles.includes(r as any)
+                ? prev.roles.filter(x => x !== r)
+                : [...prev.roles, r as any];
+            return { ...prev, roles: roles.length > 0 ? roles : ['employee'] };
+        });
+    };
 
     const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         setForm(prev => ({ ...prev, [k]: e.target.value }));
@@ -107,10 +116,25 @@ export default function AddEmployeeModal({ onClose, onSuccess, editUser }: Props
                     {/* Role + Department */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="label">Role *</label>
-                            <select value={form.role} onChange={set('role')} className="select">
-                                {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                            </select>
+                            <label className="label">Roles *</label>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {['admin', 'manager', 'hr', 'employee', 'client'].map(r => (
+                                    <label key={r} className={clsx(
+                                        'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all uppercase',
+                                        form.roles.includes(r as any)
+                                            ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                            : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                    )}>
+                                        <input
+                                            type="checkbox"
+                                            checked={form.roles.includes(r as any)}
+                                            onChange={() => toggleRole(r)}
+                                            className="hidden"
+                                        />
+                                        {r}
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                         <div>
                             <label className="label">Department</label>

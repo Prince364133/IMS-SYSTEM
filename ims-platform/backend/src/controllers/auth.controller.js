@@ -19,20 +19,29 @@ exports.register = async (req, res, next) => {
         const exists = await User.findOne({ email: email.toLowerCase() });
         if (exists) return res.status(409).json({ error: 'Email already registered' });
 
-        const adminExists = await User.exists({ role: 'admin' });
+        const adminExists = await User.exists({ roles: 'admin' });
         const userCount = await User.countDocuments();
 
-        // Only admin can create admin/hr roles via API, unless it's the very first admin
-        let safeRole = (role || 'employee');
-        if (role === 'admin' && !adminExists) {
-            safeRole = 'admin';
-        } else if (['admin', 'hr'].includes(role) && req.user?.role !== 'admin') {
-            safeRole = 'employee';
-        } else if (userCount === 0) {
-            safeRole = 'admin'; // Absolute fallback for first ever user
+        // Multi-role handling
+        let safeRoles = (roles && Array.isArray(roles)) ? roles : [(role || 'employee')];
+
+        // Validation & Normalization
+        const validRoles = ['admin', 'manager', 'hr', 'employee', 'client'];
+        safeRoles = safeRoles.filter(r => validRoles.includes(r));
+        if (safeRoles.length === 0) safeRoles = ['employee'];
+
+        // Security check
+        const isGrantingHigherPrivilage = safeRoles.some(r => ['admin', 'hr'].includes(r));
+
+        if (!adminExists) {
+            // First user is ALWAYS admin
+            safeRoles = ['admin'];
+        } else if (isGrantingHigherPrivilage && req.user?.role !== 'admin') {
+            // Only admin can grant admin/hr
+            safeRoles = ['employee'];
         }
 
-        const user = await User.create({ name, email, password, role: safeRole });
+        const user = await User.create({ name, email, password, roles: safeRoles });
         const token = signAccessToken(user._id);
         const refreshToken = signRefreshToken(user._id);
 

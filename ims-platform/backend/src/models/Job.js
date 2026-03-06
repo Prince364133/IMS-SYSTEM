@@ -16,6 +16,16 @@ const jobSchema = new mongoose.Schema(
         location: { type: String, default: '' },
         salaryRange: { type: String, default: '' },
         requirements: [{ type: String }],
+        roleCategory: { type: String, default: 'General' },
+        openings: { type: Number, default: 1 },
+        customFields: [
+            {
+                label: { type: String, required: true },
+                name: { type: String, required: true },
+                type: { type: String, enum: ['text', 'textarea', 'number', 'url', 'file'], default: 'text' },
+                required: { type: Boolean, default: false },
+            }
+        ],
         status: {
             type: String,
             enum: ['open', 'closed', 'on_hold'],
@@ -45,6 +55,7 @@ const applicationSchema = new mongoose.Schema(
         phone: { type: String, default: '' },
         resumeUrl: { type: String, default: '' },
         coverLetter: { type: String, default: '' },
+        customFields: { type: mongoose.Schema.Types.Mixed, default: {} },
         status: {
             type: String,
             enum: ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'],

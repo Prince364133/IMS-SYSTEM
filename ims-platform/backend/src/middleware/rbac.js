@@ -9,9 +9,12 @@ function requireRole(...roles) {
         if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
-        if (!roles.includes(req.user.role)) {
+        const userRoles = req.user.roles || [req.user.role || 'employee'];
+        const hasPermission = roles.some(role => userRoles.includes(role));
+
+        if (!hasPermission) {
             return res.status(403).json({
-                error: `Access denied. Required role(s): ${roles.join(', ')}. Your role: ${req.user.role}`,
+                error: `Access denied. Required role(s): ${roles.join(', ')}. Your roles: ${userRoles.join(', ')}`,
             });
         }
         next();

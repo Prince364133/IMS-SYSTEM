@@ -9,6 +9,7 @@ interface User {
     name: string;
     email: string;
     role: 'admin' | 'manager' | 'hr' | 'employee' | 'client';
+    roles: ('admin' | 'manager' | 'hr' | 'employee' | 'client')[];
     photoUrl?: string;
     department?: string;
     position?: string;
