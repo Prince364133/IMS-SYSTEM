@@ -146,11 +146,27 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     const [saving, setSaving] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    const [settingsLoading, setSettingsLoading] = useState(true);
+    const [driveConfigured, setDriveConfigured] = useState(false);
+
     useEffect(() => {
         setLoadingUsers(true);
-        api.get('/api/users?limit=200').then(({ data }) => {
-            setAllUsers(data.users || data || []);
-        }).catch(() => { }).finally(() => setLoadingUsers(false));
+        Promise.all([
+            api.get('/api/users?limit=200').catch(() => ({ data: [] })),
+            api.get('/api/settings').catch(() => ({ data: null }))
+        ]).then(([usersRes, settingsRes]) => {
+            setAllUsers(usersRes.data.users || usersRes.data || []);
+
+            const settings = settingsRes.data?.settings;
+            if (settings) {
+                const isDrive = settings.storageMode === 'google_drive';
+                const hasKeys = !!settings.googleDriveServiceAccount && !!settings.googleDriveFolderId;
+                setDriveConfigured(isDrive && hasKeys);
+            }
+        }).finally(() => {
+            setLoadingUsers(false);
+            setSettingsLoading(false);
+        });
     }, []);
 
     const addFiles = useCallback((files: File[]) => {
@@ -262,202 +278,225 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                 </div>
 
                 <div className="flex-1 overflow-auto p-6">
-                    {/* Tabs */}
-                    <div className="flex p-1 bg-gray-100 rounded-xl mb-5">
-                        {[{ key: 'upload', icon: Upload, label: 'Upload File' }, { key: 'link', icon: Link2, label: 'Add Link' }].map(t => (
-                            <button key={t.key} onClick={() => setTab(t.key as any)}
-                                className={clsx('flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all',
-                                    tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                                <t.icon className="w-3.5 h-3.5" /> {t.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {tab === 'upload' ? (
-                        <div className="space-y-4">
-                            {/* Drop Zone */}
-                            <div
-                                onDrop={onDrop}
-                                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                                onDragLeave={() => setDragging(false)}
-                                onClick={() => inputRef.current?.click()}
-                                className={clsx('border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all',
-                                    dragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50')}
-                            >
-                                <div className={clsx('w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center transition-colors', dragging ? 'bg-indigo-600' : 'bg-indigo-50')}>
-                                    <Upload className={clsx('w-6 h-6 transition-colors', dragging ? 'text-white' : 'text-indigo-500')} />
-                                </div>
-                                <p className="text-sm font-semibold text-gray-700">
-                                    {dragging ? 'Drop files here' : 'Drag & drop or click to browse'}
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Images, ZIP · Max {MAX_SIZE_MB}MB each</p>
-                                <input ref={inputRef} type="file" multiple accept={ACCEPTED.join(',')} onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} className="hidden" />
+                    {settingsLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20">
+                            <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
+                            <p className="text-sm text-gray-500">Checking configuration...</p>
+                        </div>
+                    ) : !driveConfigured ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <div className="w-20 h-20 rounded-full bg-amber-50 flex items-center justify-center mb-5">
+                                <AlertCircle className="w-10 h-10 text-amber-500" />
                             </div>
-
-                            {/* File list */}
-                            {items.length > 0 && (
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {items.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                            <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-white border border-gray-100 flex items-center justify-center">
-                                                {item.preview ? <img src={item.preview} alt="" className="w-full h-full object-cover" /> : <FileText className="w-4 h-4 text-indigo-400" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-semibold text-gray-800 truncate">{item.file.name}</p>
-                                                <p className="text-[10px] text-gray-400">{formatBytes(item.file.size)}</p>
-                                                {item.status === 'uploading' && (
-                                                    <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                                        <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
-                                                    </div>
-                                                )}
-                                                {item.status === 'error' && <p className="text-[10px] text-red-500 mt-0.5">{item.error}</p>}
-                                            </div>
-                                            <div className="flex-shrink-0">
-                                                {item.status === 'pending' && <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400"><X className="w-4 h-4" /></button>}
-                                                {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
-                                                {item.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                                                {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Type selector */}
-                            <div>
-                                <label className="label">Document Category</label>
-                                <select value={docType} onChange={e => setDocType(e.target.value)} className="select">
-                                    {['contract', 'offer_letter', 'payslip', 'policy', 'report', 'other'].map(t => (
-                                        <option key={t} value={t}>{t.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Google Drive Not Configured</h3>
+                            <p className="text-gray-500 text-sm mb-6 max-w-md">
+                                For security and centralized storage, all file uploads must go directly to Google Drive.
+                                Please configure Google Drive in the system settings first.
+                            </p>
+                            <Link href="/dashboard/settings" onClick={onClose} className="btn-primary">
+                                Configure Google Drive
+                            </Link>
                         </div>
                     ) : (
-                        /* Link Tab */
-                        <form onSubmit={e => { e.preventDefault(); handleAddLink(); }} className="space-y-4">
-                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                                <p className="text-xs text-blue-700 leading-relaxed">
-                                    Use this to link files already on <b>Google Drive</b>, <b>OneDrive</b>, or any public URL.
-                                </p>
-                            </div>
-                            <div>
-                                <label className="label">Display Name *</label>
-                                <input value={linkName} onChange={e => setLinkName(e.target.value)} className="input" placeholder="e.g. Q4 Financial Report" required />
-                            </div>
-                            <div>
-                                <label className="label">File URL *</label>
-                                <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="input" placeholder="https://drive.google.com/..." type="url" required />
-                            </div>
-                            <div>
-                                <label className="label">Category</label>
-                                <select value={linkType} onChange={e => setLinkType(e.target.value)} className="select">
-                                    {['contract', 'offer_letter', 'payslip', 'policy', 'report', 'other'].map(t => (
-                                        <option key={t} value={t}>{t.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </form>
-                    )}
-
-                    {/* ── User Tagging (shared) ── */}
-                    <div className="mt-6 border-t border-gray-100 pt-5">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <Tags className="w-4 h-4 text-indigo-500" />
-                                <span className="text-sm font-semibold text-gray-900">Tag Users</span>
-                                {taggedUsers.length > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">{taggedUsers.length}</span>
-                                )}
-                            </div>
-                            <button type="button" onClick={() => setShowUserDropdown(v => !v)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
-                                <Users className="w-3.5 h-3.5" /> {showUserDropdown ? 'Done' : 'Select Users'} <ChevronDown className={clsx('w-3 h-3 transition-transform', showUserDropdown && 'rotate-180')} />
-                            </button>
-                        </div>
-
-                        {/* Tags display */}
-                        {taggedUsers.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mb-3">
-                                {taggedUsers.map(u => (
-                                    <span key={u._id} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full border border-indigo-100 font-medium">
-                                        {u.name}
-                                        <button onClick={() => toggleUser(u)}><X className="w-3 h-3 text-indigo-400 hover:text-indigo-600" /></button>
-                                    </span>
+                        <>
+                            {/* Tabs */}
+                            <div className="flex p-1 bg-gray-100 rounded-xl mb-5">
+                                {[{ key: 'upload', icon: Upload, label: 'Upload File' }, { key: 'link', icon: Link2, label: 'Add Link' }].map(t => (
+                                    <button key={t.key} onClick={() => setTab(t.key as any)}
+                                        className={clsx('flex-1 flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all',
+                                            tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                                        <t.icon className="w-3.5 h-3.5" /> {t.label}
+                                    </button>
                                 ))}
                             </div>
-                        )}
 
-                        {/* User picker dropdown */}
-                        {showUserDropdown && (
-                            <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                                <div className="p-2 border-b border-gray-100 bg-gray-50">
-                                    <input
-                                        value={userSearch} onChange={e => setUserSearch(e.target.value)}
-                                        placeholder="Search users..."
-                                        className="w-full text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                                    />
+                            {tab === 'upload' ? (
+                                <div className="space-y-4">
+                                    {/* Drop Zone */}
+                                    <div
+                                        onDrop={onDrop}
+                                        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                                        onDragLeave={() => setDragging(false)}
+                                        onClick={() => inputRef.current?.click()}
+                                        className={clsx('border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all',
+                                            dragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50')}
+                                    >
+                                        <div className={clsx('w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center transition-colors', dragging ? 'bg-indigo-600' : 'bg-indigo-50')}>
+                                            <Upload className={clsx('w-6 h-6 transition-colors', dragging ? 'text-white' : 'text-indigo-500')} />
+                                        </div>
+                                        <p className="text-sm font-semibold text-gray-700">
+                                            {dragging ? 'Drop files here' : 'Drag & drop or click to browse'}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Images, ZIP · Max {MAX_SIZE_MB}MB each</p>
+                                        <input ref={inputRef} type="file" multiple accept={ACCEPTED.join(',')} onChange={e => { if (e.target.files) addFiles(Array.from(e.target.files)); }} className="hidden" />
+                                    </div>
+
+                                    {/* File list */}
+                                    {items.length > 0 && (
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                                            {items.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                    <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-white border border-gray-100 flex items-center justify-center">
+                                                        {item.preview ? <img src={item.preview} alt="" className="w-full h-full object-cover" /> : <FileText className="w-4 h-4 text-indigo-400" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-semibold text-gray-800 truncate">{item.file.name}</p>
+                                                        <p className="text-[10px] text-gray-400">{formatBytes(item.file.size)}</p>
+                                                        {item.status === 'uploading' && (
+                                                            <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                                                <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
+                                                            </div>
+                                                        )}
+                                                        {item.status === 'error' && <p className="text-[10px] text-red-500 mt-0.5">{item.error}</p>}
+                                                    </div>
+                                                    <div className="flex-shrink-0">
+                                                        {item.status === 'pending' && <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400"><X className="w-4 h-4" /></button>}
+                                                        {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
+                                                        {item.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                                                        {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Type selector */}
+                                    <div>
+                                        <label className="label">Document Category</label>
+                                        <select value={docType} onChange={e => setDocType(e.target.value)} className="select">
+                                            {['contract', 'offer_letter', 'payslip', 'policy', 'report', 'other'].map(t => (
+                                                <option key={t} value={t}>{t.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div className="max-h-40 overflow-y-auto">
-                                    {loadingUsers ? (
-                                        <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-indigo-500" /></div>
-                                    ) : filteredUsers.length === 0 ? (
-                                        <p className="text-xs text-gray-400 text-center py-4">No users found</p>
-                                    ) : filteredUsers.map(u => (
-                                        <button key={u._id} type="button" onClick={() => toggleUser(u)}
-                                            className={clsx('w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs hover:bg-gray-50 transition-colors',
-                                                taggedUsers.find(x => x._id === u._id) ? 'bg-indigo-50' : '')}>
-                                            <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px] flex-shrink-0">
-                                                {u.name?.[0]?.toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-900">{u.name}</p>
-                                                <p className="text-gray-400">{u.email}</p>
-                                            </div>
-                                            {taggedUsers.find(x => x._id === u._id) && <CheckCircle className="w-4 h-4 text-indigo-500 ml-auto" />}
-                                        </button>
-                                    ))}
+                            ) : (
+                                /* Link Tab */
+                                <form onSubmit={e => { e.preventDefault(); handleAddLink(); }} className="space-y-4">
+                                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                        <p className="text-xs text-blue-700 leading-relaxed">
+                                            Use this to link files already on <b>Google Drive</b>, <b>OneDrive</b>, or any public URL.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="label">Display Name *</label>
+                                        <input value={linkName} onChange={e => setLinkName(e.target.value)} className="input" placeholder="e.g. Q4 Financial Report" required />
+                                    </div>
+                                    <div>
+                                        <label className="label">File URL *</label>
+                                        <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="input" placeholder="https://drive.google.com/..." type="url" required />
+                                    </div>
+                                    <div>
+                                        <label className="label">Category</label>
+                                        <select value={linkType} onChange={e => setLinkType(e.target.value)} className="select">
+                                            {['contract', 'offer_letter', 'payslip', 'policy', 'report', 'other'].map(t => (
+                                                <option key={t} value={t}>{t.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </form>
+                            )}
+
+                            {/* ── User Tagging (shared) ── */}
+                            <div className="mt-6 border-t border-gray-100 pt-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Tags className="w-4 h-4 text-indigo-500" />
+                                        <span className="text-sm font-semibold text-gray-900">Tag Users</span>
+                                        {taggedUsers.length > 0 && (
+                                            <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">{taggedUsers.length}</span>
+                                        )}
+                                    </div>
+                                    <button type="button" onClick={() => setShowUserDropdown(v => !v)}
+                                        className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                                        <Users className="w-3.5 h-3.5" /> {showUserDropdown ? 'Done' : 'Select Users'} <ChevronDown className={clsx('w-3 h-3 transition-transform', showUserDropdown && 'rotate-180')} />
+                                    </button>
                                 </div>
+
+                                {/* Tags display */}
+                                {taggedUsers.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {taggedUsers.map(u => (
+                                            <span key={u._id} className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full border border-indigo-100 font-medium">
+                                                {u.name}
+                                                <button onClick={() => toggleUser(u)}><X className="w-3 h-3 text-indigo-400 hover:text-indigo-600" /></button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* User picker dropdown */}
+                                {showUserDropdown && (
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                        <div className="p-2 border-b border-gray-100 bg-gray-50">
+                                            <input
+                                                value={userSearch} onChange={e => setUserSearch(e.target.value)}
+                                                placeholder="Search users..."
+                                                className="w-full text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                            />
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto">
+                                            {loadingUsers ? (
+                                                <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-indigo-500" /></div>
+                                            ) : filteredUsers.length === 0 ? (
+                                                <p className="text-xs text-gray-400 text-center py-4">No users found</p>
+                                            ) : filteredUsers.map(u => (
+                                                <button key={u._id} type="button" onClick={() => toggleUser(u)}
+                                                    className={clsx('w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs hover:bg-gray-50 transition-colors',
+                                                        taggedUsers.find(x => x._id === u._id) ? 'bg-indigo-50' : '')}>
+                                                    <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                                                        {u.name?.[0]?.toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900">{u.name}</p>
+                                                        <p className="text-gray-400">{u.email}</p>
+                                                    </div>
+                                                    {taggedUsers.find(x => x._id === u._id) && <CheckCircle className="w-4 h-4 text-indigo-500 ml-auto" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Email toggle */}
+                                <label className={clsx('flex items-start gap-3 mt-4 p-3 rounded-xl border cursor-pointer transition-colors',
+                                    sendEmail ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100 hover:border-gray-200')}>
+                                    <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 mt-0.5" />
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                                            <span className="text-sm font-semibold text-gray-900">Send email notification</span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            Tagged users will receive an email with document details and a link.
+                                        </p>
+                                    </div>
+                                </label>
                             </div>
-                        )}
 
-                        {/* Email toggle */}
-                        <label className={clsx('flex items-start gap-3 mt-4 p-3 rounded-xl border cursor-pointer transition-colors',
-                            sendEmail ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100 hover:border-gray-200')}>
-                            <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)}
-                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 mt-0.5" />
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <Mail className="w-3.5 h-3.5 text-indigo-500" />
-                                    <span className="text-sm font-semibold text-gray-900">Send email notification</span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-0.5">
-                                    Tagged users will receive an email with document details and a link.
-                                </p>
+                            {/* Footer */}
+                            <div className="flex gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0 bg-gray-50 rounded-b-2xl">
+                                <button onClick={onClose} className="btn-secondary flex-1">{allDone ? 'Close' : 'Cancel'}</button>
+                                {tab === 'upload' ? (
+                                    <button onClick={uploadAll} disabled={!hasPending || saving}
+                                        className="btn-primary flex-1 shadow-md shadow-indigo-600/20">
+                                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                        {saving ? 'Uploading...' : `Upload ${items.filter(i => i.status === 'pending').length} file(s)`}
+                                    </button>
+                                ) : (
+                                    <button onClick={handleAddLink as any} disabled={saving || !linkUrl || !linkName}
+                                        className="btn-primary flex-1 shadow-md shadow-indigo-600/20">
+                                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                                        {saving ? 'Saving...' : 'Add Link'}
+                                    </button>
+                                )}
                             </div>
-                        </label>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0 bg-gray-50 rounded-b-2xl">
-                    <button onClick={onClose} className="btn-secondary flex-1">{allDone ? 'Close' : 'Cancel'}</button>
-                    {tab === 'upload' ? (
-                        <button onClick={uploadAll} disabled={!hasPending || saving}
-                            className="btn-primary flex-1 shadow-md shadow-indigo-600/20">
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                            {saving ? 'Uploading...' : `Upload ${items.filter(i => i.status === 'pending').length} file(s)`}
-                        </button>
-                    ) : (
-                        <button onClick={handleAddLink as any} disabled={saving || !linkUrl || !linkName}
-                            className="btn-primary flex-1 shadow-md shadow-indigo-600/20">
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-                            {saving ? 'Saving...' : 'Add Link'}
-                        </button>
+                        </>
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

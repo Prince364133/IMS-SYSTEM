@@ -47,6 +47,10 @@ exports.createTask = async (req, res, next) => {
             });
         }
 
+        if (task.projectId) {
+            await updateProjectProgress(task.projectId);
+        }
+
         res.status(201).json({ task });
     } catch (err) { next(err); }
 };
@@ -65,6 +69,15 @@ exports.updateTask = async (req, res, next) => {
     try {
         const oldTask = await Task.findById(req.params.id);
         if (!oldTask) return res.status(404).json({ error: 'Task not found' });
+
+        // IDOR Check: Only admin, creator, or assignee can update
+        const isAdmin = req.user.role === 'admin';
+        const isCreator = oldTask.createdBy?.toString() === req.user._id.toString();
+        const isAssignee = oldTask.assigneeId?.toString() === req.user._id.toString();
+
+        if (!isAdmin && !isCreator && !isAssignee) {
+            return res.status(403).json({ error: 'Access denied. You do not have permission to edit this task.' });
+        }
 
         const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }).lean();
         await logAction(req.user._id, 'UPDATE_TASK', 'task', task._id, {}, req);
@@ -96,14 +109,44 @@ exports.updateTask = async (req, res, next) => {
             // Mention logic could go here to notify PM/creator
         }
 
+        if (task.projectId) {
+            await updateProjectProgress(task.projectId);
+        }
+
         res.json({ task });
     } catch (err) { next(err); }
 };
 
 exports.deleteTask = async (req, res, next) => {
     try {
-        await Task.findByIdAndUpdate(req.params.id, { deletedAt: new Date() });
+        const task = await Task.findByIdAndUpdate(req.params.id, { deletedAt: new Date() });
+        if (task && task.projectId) {
+            await updateProjectProgress(task.projectId);
+        }
         await logAction(req.user._id, 'DELETE_TASK', 'task', req.params.id, {}, req);
         res.json({ message: 'Task deleted' });
     } catch (err) { next(err); }
 };
+const updateProjectProgress = async (projectId) => {
+    if (!projectId) return;
+    try {
+        const stats = await Task.aggregate([
+            { $match: { projectId: new (require('mongoose').Types.ObjectId)(String(projectId)), deletedAt: null } },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    completed: { $sum: { $cond: [{ $eq: ["$status", "Completed"] }, 1, 0] } }
+                }
+            }
+        ]);
+
+        const progress = stats.length > 0 ? Math.round((stats[0].completed / stats[0].total) * 100) : 0;
+        await Project.findByIdAndUpdate(projectId, { progress });
+        console.log(`Optimized Progress Update: Project ${projectId} -> ${progress}%`);
+    } catch (err) {
+        console.error('Error updating project progress:', err.message);
+    }
+};
+
+module.exports = exports;

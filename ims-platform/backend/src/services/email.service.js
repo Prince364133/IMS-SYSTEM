@@ -279,7 +279,16 @@ async function sendSalarySlip(employee, salary) {
   return sendSalaryGeneratedEmail(employee.email, employee.name, salary.month, salary.netSalary);
 }
 
-sendDocumentTagEmail,
+module.exports = {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendProjectAssignedEmail,
+  sendSalaryGeneratedEmail,
+  sendSystemAlert,
+  sendWelcomeEmail,
+  sendDocumentTagEmail,
+  sendSalarySlip,
+
   /**
    * General purpose Transitional Email (Used by AutomationService)
    */
@@ -294,12 +303,12 @@ sendDocumentTagEmail,
     return send({ to, subject: `${company.companyName} — ${subject}`, html });
   },
 
-    /**
-     * Specialized Meeting Notification
-     */
-    sendMeetingEmail: async (to, name, meetingTitle, startTime, ctaUrl) => {
-      const company = await getCompanyInfo();
-      const html = baseLayout('Meeting Invitation', `
+  /**
+   * Specialized Meeting Notification
+   */
+  sendMeetingEmail: async (to, name, meetingTitle, startTime, ctaUrl) => {
+    const company = await getCompanyInfo();
+    const html = baseLayout('Meeting Invitation', `
       <h2>Meeting: ${meetingTitle}</h2>
       <p>Hi ${name},</p>
       <p>You have a meeting scheduled for <strong>${new Date(startTime).toLocaleString()}</strong>.</p>
@@ -309,6 +318,6 @@ sendDocumentTagEmail,
       </div>
       <a href="${ctaUrl}" class="button">Join/View Meeting</a>
     `, company);
-      return send({ to, subject: `${company.companyName} — Meeting: ${meetingTitle}`, html });
-    }
+    return send({ to, subject: `${company.companyName} — Meeting: ${meetingTitle}`, html });
+  }
 };

@@ -7,7 +7,7 @@ import {
     ArrowLeft, FolderKanban, Plus, Users, Calendar, Tag,
     CheckSquare, Paperclip, Edit2, Loader2, MoreHorizontal,
     Clock, AlertCircle, CheckCircle2, Play, Eye, MessageSquare, Sparkles,
-    Globe, ExternalLink
+    Globe, ExternalLink, Building2
 } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
@@ -60,6 +60,11 @@ export default function ProjectDetailPage() {
     const [loadingAI, setLoadingAI] = useState(false);
 
     useEffect(() => {
+        if (id === 'create') {
+            router.replace('/dashboard/projects?create=true');
+            return;
+        }
+
         Promise.all([
             api.get(`/api/projects/${id}`),
             api.get(`/api/projects/${id}/tasks`),

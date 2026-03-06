@@ -40,6 +40,16 @@ export default function ProjectsPage() {
 
     useEffect(() => { fetchProjects(); }, [search, status]);
 
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('create') === 'true') {
+                setShowCreate(true);
+                window.history.replaceState({}, '', '/dashboard/projects');
+            }
+        }
+    }, []);
+
     return (
         <div>
             <div className="page-header flex items-center justify-between">

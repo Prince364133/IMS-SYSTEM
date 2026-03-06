@@ -2,6 +2,7 @@
 
 const Salary = require('../models/Salary');
 const User = require('../models/User');
+const AnalyticsService = require('../services/analytics.service');
 
 exports.getSalaries = async (req, res, next) => {
     try {
@@ -33,7 +34,9 @@ exports.generateSalary = async (req, res, next) => {
         if (!employeeId || !month || !baseSalary) {
             return res.status(400).json({ error: 'employeeId, month, and baseSalary are required' });
         }
-        const netSalary = baseSalary - deductions + bonuses;
+
+        // Use Analytics Service (Suggestion 7)
+        const netSalary = AnalyticsService.calculateNetSalary(baseSalary, 0, 0, deductions, bonuses);
         const salary = await Salary.findOneAndUpdate(
             { employeeId, month },
             { baseSalary, deductions, bonuses, netSalary, notes, generatedBy: req.user._id, status: 'pending' },

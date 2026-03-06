@@ -21,7 +21,19 @@ exports.uploadFile = async (req, res, next) => {
             // Optionally, handle the error more gracefully, e.g., return an error response
             // For now, we'll proceed with an empty taggedUsers array if parsing fails
         }
-        const { name, folder = 'general', relatedId, relatedModel, description } = req.body;
+        const { name, relatedId, relatedModel, description } = req.body;
+
+        // Hierarchical Organization (Suggestion 12)
+        // Format: clients/:clientId/projects/:projectId/documents/
+        let hierarchicalFolder = 'company/general';
+        if (relatedModel === 'Project' && relatedId) {
+            const project = await require('../models/Project').findById(relatedId).lean();
+            if (project) {
+                const clientId = project.clientIds && project.clientIds.length > 0 ? project.clientIds[0] : 'public';
+                hierarchicalFolder = `company/clients/${clientId}/${project._id}/documents`;
+            }
+        }
+
         const doc = await Document.create({
             name: name || req.file.originalname,
             fileUrl: req.storageResult.fileUrl,
@@ -29,7 +41,7 @@ exports.uploadFile = async (req, res, next) => {
             storageType: req.storageResult.storageType,
             fileType: req.file.mimetype,
             fileSize: req.file.size,
-            folder,
+            folder: hierarchicalFolder,
             uploadedBy: req.user._id,
             relatedId: relatedId || null,
             relatedModel: relatedModel || '',
@@ -41,7 +53,7 @@ exports.uploadFile = async (req, res, next) => {
             eventType: 'document_uploaded',
             triggeredBy: req.user._id,
             relatedItem: { itemId: doc._id, itemModel: 'Document' },
-            description: `Document "${doc.name}" was uploaded to project/folder: ${doc.folder}`,
+            description: `Document "${doc.name}" was uploaded to: ${doc.folder}`,
             metadata: { fileName: doc.name, folder: doc.folder, fileUrl: doc.fileUrl }
         });
 

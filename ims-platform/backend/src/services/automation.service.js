@@ -3,7 +3,8 @@
 const AutomationLog = require('../models/AutomationLog');
 const Notification = require('../models/Notification'); // Added by instruction
 const EmailService = require('./email.service');
-const SmartNotificationService = require('./smart-notification.service'); // Added by instruction
+const SmartNotificationService = require('./smart-notification.service');
+const AnalyticsService = require('./analytics.service');
 const User = require('../models/User');
 const { getIo, onlineUsers, initSocket } = require('../sockets'); // Modified by instruction
 
@@ -18,6 +19,12 @@ class AutomationService {
      */
     async trigger(params) {
         const { eventType, triggeredBy, targetUser, targetClient, relatedItem, description, metadata } = params;
+
+        // Throttling check for non-critical events
+        if (targetUser && await this.#shouldThrottle(targetUser, eventType)) {
+            console.log(`Notification throttled for user ${targetUser} [${eventType}]`);
+            return null;
+        }
 
         try {
             // 1. Create Log Entry
@@ -172,6 +179,26 @@ class AutomationService {
                         message = `The company asset "${params.metadata.assetName}" is due for return soon.`;
                         actionUrl = `${clientUrl}/dashboard/assets`;
                         break;
+                    case 'project_risk_alert':
+                        subject = `Risk Alert: Project "${params.metadata.projectName}"`;
+                        message = `High risk detected (Risk Score: ${params.metadata.riskScore}). Immediate review recommended.`;
+                        actionUrl = `${clientUrl}/dashboard/projects/${params.relatedItem.itemId}`;
+                        break;
+                    case 'task_escalated':
+                        subject = `Escalation Notice: Task "${params.metadata.taskName}"`;
+                        message = `A task you are assigned to has been escalated due to delays.`;
+                        actionUrl = `${clientUrl}/dashboard/tasks/${params.relatedItem.itemId}`;
+                        break;
+                    case 'attendance_alert':
+                        subject = `HR Attendance Alert: ${params.metadata.employeeName}`;
+                        message = `${params.metadata.employeeName} has ${params.metadata.lateCount} late entries this month.`;
+                        actionUrl = `${clientUrl}/dashboard/hr/attendance`;
+                        break;
+                    case 'attendance_absence':
+                        subject = `Absence Recorded: ${params.metadata.date || 'Today'}`;
+                        message = params.description || `You were marked absent today.`;
+                        actionUrl = `${clientUrl}/dashboard`;
+                        break;
                     default:
                         subject = `Update from ${companyName}`;
                         message = params.description;
@@ -251,6 +278,24 @@ class AutomationService {
                 templateData.message = `Our system recorded a late check-in today. Please ensure you mark your attendance on time.`;
                 templateData.ctaText = 'View Dashboard';
                 break;
+            case 'project_risk_alert':
+                subject = `Risk Alert: Project "${params.metadata.projectName}"`;
+                templateData.message = `High risk detected (Score: ${params.metadata.riskScore}). Action required.`;
+                templateData.ctaText = 'Analyze Risk';
+                templateData.ctaLink = `${clientUrl}/dashboard/projects/${params.relatedItem.itemId}`;
+                break;
+            case 'task_escalated':
+                subject = `Escalation Notice: Task "${params.metadata.taskName}"`;
+                templateData.message = `Your task "${params.metadata.taskName}" has been escalated to management.`;
+                templateData.ctaText = 'View Task';
+                templateData.ctaLink = `${clientUrl}/dashboard/tasks/${params.relatedItem.itemId}`;
+                break;
+            case 'attendance_alert':
+                subject = `HR Alert: Attendance Pattern Detected`;
+                templateData.message = `Employee ${params.metadata.employeeName} has triggered an attendance threshold alert (${params.metadata.lateCount} late entries).`;
+                templateData.ctaText = 'Review Records';
+                templateData.ctaLink = `${clientUrl}/dashboard/hr/attendance`;
+                break;
             // Add more cases as needed...
             default:
                 subject = `Update from ${companyName}`;
@@ -260,6 +305,35 @@ class AutomationService {
 
         // Call the general email sender
         await EmailService.sendTransitionalEmail(user.email, subject, templateData);
+    }
+    /**
+     * Internal: Rate limit notifications to prevent spam
+     * max 5 per hour per user for non-critical alerts
+     */
+    async #shouldThrottle(userId, eventType) {
+        if (['project_risk_alert', 'meeting_reminder', 'project_deadline'].includes(eventType)) return false;
+
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const count = await AutomationLog.countDocuments({
+            targetUser: userId,
+            timestamp: { $gte: oneHourAgo },
+            status: 'success'
+        });
+
+        return count >= 5;
+    }
+
+    /**
+     * Basic Chat Moderation Algorithm
+     */
+    moderateContent(text) {
+        const blockedWords = ["abuse1", "abuse2", "badword1"]; // Example keyword list
+        let moderated = text;
+        blockedWords.forEach(word => {
+            const reg = new RegExp(word, 'gi');
+            moderated = moderated.replace(reg, '***');
+        });
+        return moderated;
     }
 }
 

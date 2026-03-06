@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { Upload, X, FileIcon, ImageIcon, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import api from '../lib/api';
 import clsx from 'clsx';
+import Link from 'next/link';
 
 interface Props {
     relatedId: string;
@@ -38,6 +39,20 @@ export default function FileUploadModal({ relatedId, relatedModel, onClose, onSu
     const [isSavingLink, setIsSavingLink] = useState(false);
     const [dragging, setDragging] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const [settingsLoading, setSettingsLoading] = useState(true);
+    const [driveConfigured, setDriveConfigured] = useState(false);
+
+    useEffect(() => {
+        api.get('/api/settings').then(({ data }) => {
+            const settings = data?.settings;
+            if (settings) {
+                const isDrive = settings.storageMode === 'google_drive';
+                const hasKeys = !!settings.googleDriveServiceAccount && !!settings.googleDriveFolderId;
+                setDriveConfigured(isDrive && hasKeys);
+            }
+        }).catch(() => { }).finally(() => setSettingsLoading(false));
+    }, []);
 
     const addFiles = useCallback((files: File[]) => {
         const newItems: FileItem[] = files
@@ -130,154 +145,177 @@ export default function FileUploadModal({ relatedId, relatedModel, onClose, onSu
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex p-1 bg-gray-100 rounded-xl mb-5">
-                    <button
-                        onClick={() => setActiveTab('upload')}
-                        className={clsx(
-                            "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
-                            activeTab === 'upload' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        Upload Files
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('link')}
-                        className={clsx(
-                            "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
-                            activeTab === 'link' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        Add via Link
-                    </button>
-                </div>
-
-                {activeTab === 'upload' ? (
-                    <>
-                        {/* Drop zone */}
-                        <div
-                            onDrop={onDrop}
-                            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                            onDragLeave={() => setDragging(false)}
-                            onClick={() => inputRef.current?.click()}
-                            className={clsx(
-                                'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all',
-                                dragging
-                                    ? 'border-indigo-500 bg-indigo-50'
-                                    : 'border-gray-200 hover:border-indigo-400 hover:bg-gray-50'
-                            )}
-                        >
-                            <Upload className={clsx('w-8 h-8 mx-auto mb-2', dragging ? 'text-indigo-500' : 'text-gray-300')} />
-                            <p className="text-sm font-medium text-gray-700">
-                                {dragging ? 'Drop files here' : 'Drag & drop or click to browse'}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Images, ZIP · Max {MAX_SIZE_MB}MB each</p>
-                            <input
-                                ref={inputRef}
-                                type="file"
-                                multiple
-                                accept={ACCEPTED.join(',')}
-                                onChange={onInputChange}
-                                className="hidden"
-                            />
+                {settingsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
+                        <p className="text-sm text-gray-500">Checking configuration...</p>
+                    </div>
+                ) : !driveConfigured ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center px-2">
+                        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-5">
+                            <AlertCircle className="w-8 h-8 text-amber-500" />
                         </div>
-
-                        {/* File list */}
-                        {items.length > 0 && (
-                            <div className="mt-4 space-y-2 max-h-52 overflow-y-auto scrollbar-thin pr-1">
-                                {items.map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
-                                        <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
-                                            {item.preview
-                                                ? <img src={item.preview} alt="" className="w-full h-full object-cover" />
-                                                : <FileIcon className="w-4 h-4 text-gray-400" />
-                                            }
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-gray-800 truncate">{item.file.name}</p>
-                                            <p className="text-[10px] text-gray-400">{formatBytes(item.file.size)}</p>
-                                            {item.status === 'uploading' && (
-                                                <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                                    <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
-                                                </div>
-                                            )}
-                                            {item.status === 'error' && (
-                                                <p className="text-[10px] text-red-500 mt-0.5">{item.error}</p>
-                                            )}
-                                        </div>
-
-                                        <div className="flex-shrink-0">
-                                            {item.status === 'pending' && (
-                                                <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400 transition-colors">
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                            {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
-                                            {item.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                                            {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="flex gap-3 mt-5">
-                            <button onClick={onClose} className="btn-secondary flex-1">
-                                {allDone ? 'Close' : 'Cancel'}
-                            </button>
-                            {!allDone && (
-                                <button
-                                    onClick={uploadAll}
-                                    disabled={!hasPending || isUploading}
-                                    className="btn-primary flex-1"
-                                >
-                                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                                    {isUploading ? 'Uploading...' : `Upload ${items.filter(i => i.status === 'pending').length} file${items.filter(i => i.status === 'pending').length !== 1 ? 's' : ''}`}
-                                </button>
-                            )}
-                        </div>
-                    </>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Google Drive Not Configured</h3>
+                        <p className="text-gray-500 text-sm mb-6 max-w-sm">
+                            For security and centralized storage, all file uploads must go directly to Google Drive.
+                            Please configure Google Drive in the system settings first.
+                        </p>
+                        <Link href="/dashboard/settings" onClick={onClose} className="w-full flex justify-center py-2.5 px-4 bg-indigo-600 text-white rounded-xl font-semibold shadow-sm hover:bg-indigo-700 transition">
+                            Configure Google Drive
+                        </Link>
+                    </div>
                 ) : (
-                    <form onSubmit={handleAddLink} className="space-y-4">
-                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-2">
-                            <p className="text-xs text-blue-700 leading-relaxed">
-                                Use this option if your file is already on <b>Google Drive</b> or <b>OneDrive</b> and you want to keep it there.
-                            </p>
-                        </div>
-                        <div>
-                            <label className="label">Display Name</label>
-                            <input
-                                value={linkName}
-                                onChange={e => setLinkName(e.target.value)}
-                                placeholder="e.g. Project Proposal"
-                                className="input"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="label">File URL</label>
-                            <input
-                                value={linkUrl}
-                                onChange={e => setLinkUrl(e.target.value)}
-                                placeholder="https://drive.google.com/..."
-                                className="input"
-                                type="url"
-                                required
-                            />
-                        </div>
-                        <div className="flex gap-3 pt-2">
-                            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+                    <>
+                        {/* Tabs */}
+                        <div className="flex p-1 bg-gray-100 rounded-xl mb-5">
                             <button
-                                type="submit"
-                                disabled={isSavingLink || !linkUrl}
-                                className="btn-primary flex-1"
+                                onClick={() => setActiveTab('upload')}
+                                className={clsx(
+                                    "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                                    activeTab === 'upload' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                )}
                             >
-                                {isSavingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                {isSavingLink ? 'Saving...' : 'Add Link'}
+                                Upload Files
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('link')}
+                                className={clsx(
+                                    "flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                                    activeTab === 'link' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                )}
+                            >
+                                Add via Link
                             </button>
                         </div>
-                    </form>
+
+                        {activeTab === 'upload' ? (
+                            <>
+                                {/* Drop zone */}
+                                <div
+                                    onDrop={onDrop}
+                                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                                    onDragLeave={() => setDragging(false)}
+                                    onClick={() => inputRef.current?.click()}
+                                    className={clsx(
+                                        'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all',
+                                        dragging
+                                            ? 'border-indigo-500 bg-indigo-50'
+                                            : 'border-gray-200 hover:border-indigo-400 hover:bg-gray-50'
+                                    )}
+                                >
+                                    <Upload className={clsx('w-8 h-8 mx-auto mb-2', dragging ? 'text-indigo-500' : 'text-gray-300')} />
+                                    <p className="text-sm font-medium text-gray-700">
+                                        {dragging ? 'Drop files here' : 'Drag & drop or click to browse'}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, Images, ZIP · Max {MAX_SIZE_MB}MB each</p>
+                                    <input
+                                        ref={inputRef}
+                                        type="file"
+                                        multiple
+                                        accept={ACCEPTED.join(',')}
+                                        onChange={onInputChange}
+                                        className="hidden"
+                                    />
+                                </div>
+
+                                {/* File list */}
+                                {items.length > 0 && (
+                                    <div className="mt-4 space-y-2 max-h-52 overflow-y-auto scrollbar-thin pr-1">
+                                        {items.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
+                                                <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                                                    {item.preview
+                                                        ? <img src={item.preview} alt="" className="w-full h-full object-cover" />
+                                                        : <FileIcon className="w-4 h-4 text-gray-400" />
+                                                    }
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-medium text-gray-800 truncate">{item.file.name}</p>
+                                                    <p className="text-[10px] text-gray-400">{formatBytes(item.file.size)}</p>
+                                                    {item.status === 'uploading' && (
+                                                        <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                                            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${item.progress}%` }} />
+                                                        </div>
+                                                    )}
+                                                    {item.status === 'error' && (
+                                                        <p className="text-[10px] text-red-500 mt-0.5">{item.error}</p>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-shrink-0">
+                                                    {item.status === 'pending' && (
+                                                        <button onClick={() => removeItem(idx)} className="text-gray-300 hover:text-red-400 transition-colors">
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
+                                                    {item.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                                                    {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-400" />}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 mt-5">
+                                    <button onClick={onClose} className="btn-secondary flex-1">
+                                        {allDone ? 'Close' : 'Cancel'}
+                                    </button>
+                                    {!allDone && (
+                                        <button
+                                            onClick={uploadAll}
+                                            disabled={!hasPending || isUploading}
+                                            className="btn-primary flex-1"
+                                        >
+                                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                            {isUploading ? 'Uploading...' : `Upload ${items.filter(i => i.status === 'pending').length} file${items.filter(i => i.status === 'pending').length !== 1 ? 's' : ''}`}
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <form onSubmit={handleAddLink} className="space-y-4">
+                                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-2">
+                                    <p className="text-xs text-blue-700 leading-relaxed">
+                                        Use this option if your file is already on <b>Google Drive</b> or <b>OneDrive</b> and you want to keep it there.
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="label">Display Name</label>
+                                    <input
+                                        value={linkName}
+                                        onChange={e => setLinkName(e.target.value)}
+                                        placeholder="e.g. Project Proposal"
+                                        className="input"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="label">File URL</label>
+                                    <input
+                                        value={linkUrl}
+                                        onChange={e => setLinkUrl(e.target.value)}
+                                        placeholder="https://drive.google.com/..."
+                                        className="input"
+                                        type="url"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSavingLink || !linkUrl}
+                                        className="btn-primary flex-1"
+                                    >
+                                        {isSavingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                        {isSavingLink ? 'Saving...' : 'Add Link'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </>
                 )}
             </div>
         </div>

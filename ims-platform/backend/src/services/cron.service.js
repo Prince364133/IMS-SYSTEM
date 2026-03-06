@@ -9,6 +9,7 @@ const Attendance = require('../models/Attendance');
 const Salary = require('../models/Salary');
 const Meeting = require('../models/CalendarEvent');
 const mongoose = require('mongoose');
+const AnalyticsService = require('./analytics.service');
 const AIAutomationService = require('./ai-automation.service');
 
 /**
@@ -33,8 +34,11 @@ class CronService {
         // 5. Daily at 01:00: Run AI Risk Analysis for all active projects
         cron.schedule('0 1 * * *', () => this.runProjectRiskAnalysis());
 
-        // 6. Daily at 10:30: Check for late attendance (assuming shift starts at 09:30)
+        // 6. Daily at 10:30: Check for late attendance
         cron.schedule('30 10 * * *', () => this.lateAttendanceCheck());
+
+        // 7. 1st of every month at 01:00: Attendance Pattern Analysis
+        cron.schedule('0 1 1 * *', () => this.monthlyAttendancePatternCheck());
 
         console.info('Cron Jobs Scheduled Successfully.');
     }
@@ -50,17 +54,21 @@ class CronService {
         const projects = await Project.find({
             dueDate: { $lte: tomorrow, $gt: new Date() },
             status: { $ne: 'Completed' }
-        }).populate('members');
+        }).populate('memberIds');
 
         for (const project of projects) {
-            for (const member of project.members) {
-                await AutomationService.trigger({
-                    eventType: 'project_deadline',
-                    targetUser: member._id,
-                    relatedItem: { itemId: project._id, itemModel: 'Project' },
-                    description: `Deadline approaching for project: ${project.name}`,
-                    metadata: { projectName: project.name, dueDate: project.dueDate }
-                });
+            try {
+                for (const memberId of project.memberIds) {
+                    await AutomationService.trigger({
+                        eventType: 'project_deadline',
+                        targetUser: memberId,
+                        relatedItem: { itemId: project._id, itemModel: 'Project' },
+                        description: `Deadline approaching for project: ${project.name}`,
+                        metadata: { projectName: project.name, dueDate: project.dueDate }
+                    });
+                }
+            } catch (err) {
+                console.error(`Error processing project deadline for ${project._id}:`, err.message);
             }
         }
 
@@ -68,17 +76,32 @@ class CronService {
         const tasks = await Task.find({
             dueDate: { $lte: tomorrow, $gt: new Date() },
             status: { $ne: 'Completed' }
-        }).populate('assignedTo');
+        }).populate('assigneeId');
 
         for (const task of tasks) {
-            if (task.assignedTo) {
-                await AutomationService.trigger({
-                    eventType: 'task_reminder',
-                    targetUser: task.assignedTo._id,
-                    relatedItem: { itemId: task._id, itemModel: 'Task' },
-                    description: `Task "${task.title}" is due soon.`,
-                    metadata: { taskName: task.title, dueDate: task.dueDate }
-                });
+            try {
+                if (task.assigneeId) {
+                    await AutomationService.trigger({
+                        eventType: 'task_reminder',
+                        targetUser: task.assigneeId._id,
+                        relatedItem: { itemId: task._id, itemModel: 'Task' },
+                        description: `Task "${task.title}" is due soon.`,
+                        metadata: { taskName: task.title, dueDate: task.dueDate }
+                    });
+                }
+
+                // Automatic Task Escalation Check
+                if (AnalyticsService.shouldEscalateTask(task)) {
+                    await AutomationService.trigger({
+                        eventType: 'task_escalated',
+                        targetUser: task.assigneeId ? task.assigneeId._id : null,
+                        description: `URGENT: Task "${task.title}" is past due and has been escalated.`,
+                        metadata: { taskName: task.title, status: 'overdue' }
+                    });
+                    console.log(`Task escalated: ${task.title}`);
+                }
+            } catch (err) {
+                console.error(`Error processing task deadline for ${task._id}:`, err.message);
             }
         }
     }
@@ -149,26 +172,26 @@ class CronService {
      * Run AI Risk Analysis for all active projects
      */
     async runProjectRiskAnalysis() {
-        console.info('Running AI Project Risk Analysis...');
-        const activeProjects = await Project.find({ status: { $in: ['In Progress', 'On Hold'] } });
+        console.info('Running Algorithmic Project Risk Analysis...');
+        const activeProjects = await Project.find({ status: { $in: ['in_progress', 'on_hold'] } });
 
         for (const project of activeProjects) {
             const tasks = await Task.find({ projectId: project._id }).select('status dueDate').lean();
             if (tasks.length === 0) continue;
 
-            try {
-                const aiResult = await AIAutomationService.predictProjectRisk(tasks);
-                if (aiResult.risk === 'High' || aiResult.risk === 'Medium') {
-                    // Notify project manager/admin
-                    await AutomationService.trigger({
-                        eventType: 'project_risk_alert',
-                        relatedItem: { itemId: project._id, itemModel: 'Project' },
-                        description: `Risk identified for project "${project.name}": ${aiResult.risk} level.`,
-                        metadata: { projectName: project.name, riskLevel: aiResult.risk }
-                    });
-                }
-            } catch (e) {
-                console.error(`Risk analysis failed for project ${project._id}:`, e.message);
+            const overdueTasks = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'Completed').length;
+            const delayDays = project.deadline ? Math.max(0, Math.ceil((new Date() - new Date(project.deadline)) / (1000 * 60 * 60 * 24))) : 0;
+
+            // Calculate Risk Score (Suggestion 15)
+            const riskScore = AnalyticsService.calculateProjectRiskScore(delayDays, overdueTasks, 1); // 1 = placeholder for load
+
+            if (riskScore > 10) {
+                await AutomationService.trigger({
+                    eventType: 'project_risk_alert',
+                    relatedItem: { itemId: project._id, itemModel: 'Project' },
+                    description: `High risk detected for project "${project.name}" (Score: ${riskScore}).`,
+                    metadata: { projectName: project.name, riskScore }
+                });
             }
         }
     }
@@ -195,6 +218,38 @@ class CronService {
                     description: `Reminder: You haven't checked in for today yet.`,
                     metadata: { currentTime: new Date().toLocaleTimeString() }
                 });
+            }
+        }
+    }
+
+    /**
+     * Monthly Check for Attendance Patterns (Suggestion 6)
+     */
+    async monthlyAttendancePatternCheck() {
+        const firstDayOfMonth = new Date();
+        firstDayOfMonth.setDate(1);
+        firstDayOfMonth.setHours(0, 0, 0, 0);
+
+        const employees = await User.find({ role: 'employee', status: 'active' });
+
+        for (const emp of employees) {
+            const lateCount = await Attendance.countDocuments({
+                user: emp._id,
+                date: { $gte: firstDayOfMonth },
+                status: 'late'
+            });
+
+            if (AnalyticsService.isAttendanceIssue(lateCount)) {
+                // Send HR Alert
+                const hrAdmins = await User.find({ role: 'admin' }).select('_id');
+                for (const admin of hrAdmins) {
+                    await AutomationService.trigger({
+                        eventType: 'attendance_alert',
+                        targetUser: admin._id,
+                        description: `Attendance Alert: Employee ${emp.name} has ${lateCount} late entries this month.`,
+                        metadata: { employeeName: emp.name, lateCount }
+                    });
+                }
             }
         }
     }

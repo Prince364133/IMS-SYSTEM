@@ -482,9 +482,9 @@ function ChatPageContent() {
         return activeChat.members.filter(m => names.some(n => m.name.toLowerCase().startsWith(n))).map(m => m._id);
     }
 
-    const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        const cursor = e.target.selectionStart || val.length;
+    const handleTyping = (e: React.ChangeEvent<HTMLInputElement> | string) => {
+        const val = typeof e === 'string' ? e : e.target.value;
+        const cursor = typeof e === 'string' ? val.length : (e.target.selectionStart || val.length);
         setText(val);
         if (!activeChat) return;
 

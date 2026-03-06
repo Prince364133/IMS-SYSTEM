@@ -2,6 +2,7 @@
 
 const EmailService = require('./email.service');
 const Notification = require('../models/Notification');
+const AnalyticsService = require('./analytics.service');
 const { getIo, onlineUsers } = require('../sockets');
 
 /**
@@ -38,9 +39,17 @@ class SmartNotificationService {
         }
 
         // 3. Smart Email Delivery
-        // Logic: Send email if priority is High, or if user is offline, or for specific critical types
+        // Logic: Calculate score to determine if we should send immediate email
+        const score = AnalyticsService.calculateNotificationScore(
+            priority === 'high' ? 3 : (priority === 'medium' ? 2 : 1),
+            ['meeting_reminder', 'project_deadline', 'project_risk_alert', 'task_overdue'].includes(type) ? 3 : 1,
+            1 // Default relevance
+        );
+
         const isUserOnline = onlineUsers.has(userId.toString());
-        const shouldSendEmail = priority === 'high' || !isUserOnline || ['salary_generated', 'meeting_reminder', 'project_deadline'].includes(type);
+        const THRESHOLD = 4; // Threshold for immediate email dispatch
+
+        const shouldSendEmail = score >= THRESHOLD || !isUserOnline;
 
         if (shouldSendEmail) {
             const User = require('../models/User');

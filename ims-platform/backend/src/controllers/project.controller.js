@@ -93,13 +93,23 @@ exports.getProjectById = async (req, res, next) => {
 
 exports.updateProject = async (req, res, next) => {
     try {
+        const oldProject = await Project.findById(req.params.id);
+        if (!oldProject) return res.status(404).json({ error: 'Project not found' });
+
+        // IDOR Check: Only admin or owner can update
+        const isAdmin = req.user.role === 'admin';
+        const isOwner = oldProject.ownerId?.toString() === req.user._id.toString();
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ error: 'Access denied. Only the project owner or administrator can modify project details.' });
+        }
+
         const project = await Project.findByIdAndUpdate(
             req.params.id, req.body, { new: true, runValidators: true }
         ).lean();
-        if (!project) return res.status(404).json({ error: 'Project not found' });
 
         // Trigger status change automation
-        if (req.body.status && req.body.status !== project.status) {
+        if (req.body.status && req.body.status !== oldProject.status) {
             await AutomationService.trigger({
                 eventType: 'project_status_changed',
                 triggeredBy: req.user._id,
@@ -116,9 +126,20 @@ exports.updateProject = async (req, res, next) => {
 
 exports.deleteProject = async (req, res, next) => {
     try {
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ error: 'Project not found' });
+
+        // IDOR Check
+        if (req.user.role !== 'admin' && project.ownerId?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Access denied.' });
+        }
+
         await Project.findByIdAndUpdate(req.params.id, { deletedAt: new Date() });
+        // Soft delete all tasks as well
+        await Task.updateMany({ projectId: req.params.id }, { deletedAt: new Date() });
+
         await logAction(req.user._id, 'DELETE_PROJECT', 'project', req.params.id, {}, req);
-        res.json({ message: 'Project deleted' });
+        res.json({ message: 'Project and associated tasks deleted' });
     } catch (err) { next(err); }
 };
 
