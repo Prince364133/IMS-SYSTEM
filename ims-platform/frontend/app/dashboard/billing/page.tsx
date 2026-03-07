@@ -52,7 +52,7 @@ export default function BillingPage() {
     const { subscription, plan, daysLeft, isExpired, isTrialing, status, paymentsEnabled, currency, refresh } = useSubscription();
 
     useEffect(() => {
-        api.get('/billing/plans').then(r => setPlans(r.data.plans));
+        api.get('/api/billing/plans').then(r => setPlans(r.data.plans));
     }, []);
 
     useEffect(() => {
@@ -67,7 +67,7 @@ export default function BillingPage() {
         if (!coupon || !selectedPlan) return;
         setCouponLoading(true);
         try {
-            const { data } = await api.post('/billing/coupon', { couponCode: coupon, planId: selectedPlan._id });
+            const { data } = await api.post('/api/billing/coupon', { couponCode: coupon, planId: selectedPlan._id });
             setCouponResult(data);
             toast.success(`Coupon applied! You save ₹${data.discountAmount.toLocaleString('en-IN')}`);
         } catch (err: any) {
@@ -82,7 +82,7 @@ export default function BillingPage() {
         setSelectedPlan(chosenPlan);
         setPaymentLoading(true);
         try {
-            const { data: order } = await api.post('/billing/order', {
+            const { data: order } = await api.post('/api/billing/order', {
                 planId: chosenPlan._id,
                 couponCode: couponResult ? coupon : undefined,
             });
@@ -96,7 +96,7 @@ export default function BillingPage() {
                 order_id: order.orderId,
                 handler: async (response: any) => {
                     try {
-                        await api.post('/billing/verify', {
+                        await api.post('/api/billing/verify', {
                             razorpayOrderId: response.razorpay_order_id,
                             razorpayPaymentId: response.razorpay_payment_id,
                             razorpaySignature: response.razorpay_signature,

@@ -33,7 +33,7 @@ export function useSubscription(): SubscriptionStatus {
 
     const fetchStatus = useCallback(async () => {
         try {
-            const { data: res } = await api.get('/billing');
+            const { data: res } = await api.get('/api/billing');
             setData(res);
         } catch {
             // Network error or subscription expired — fail gracefully

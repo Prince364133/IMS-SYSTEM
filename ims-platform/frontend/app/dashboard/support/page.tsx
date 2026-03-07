@@ -14,7 +14,7 @@ function NewTicketModal({ onClose, onSuccess }: any) {
     const submit = async (e: React.FormEvent) => {
         e.preventDefault(); setLoading(true);
         try {
-            const { data } = await api.post('/support/tickets', form);
+            const { data } = await api.post('/api/support/tickets', form);
             toast.success(`Ticket created! You have ${data.remaining} tickets remaining this month.`);
             onSuccess();
         } catch (err: any) {
@@ -73,7 +73,7 @@ export default function SupportPage() {
     const load = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/support/tickets');
+            const { data } = await api.get('/api/support/tickets');
             setTickets(data.tickets);
             setUsage({ used: data.monthlyUsed, limit: data.monthlyLimit });
         } catch { toast.error('Failed to load tickets'); }
