@@ -35,11 +35,12 @@ exports.testConnection = async (req, res) => {
         const keyId = settings.razorpayKeyId;
         const secret = settings.razorpaySecret;
         if (!keyId || !secret) return res.status(400).json({ error: 'Razorpay credentials not configured' });
-        // Simple test — try to fetch balance from Razorpay API
+        // Simple test — try to fetch payments from Razorpay API
         const axios = require('axios');
-        const resp = await axios.get('https://api.razorpay.com/v1/accounts', {
+        const resp = await axios.get('https://api.razorpay.com/v1/payments', {
             auth: { username: keyId, password: secret },
             timeout: 5000,
+            params: { count: 1 }
         }).catch(err => err.response);
         const connected = resp?.status === 200 || resp?.status === 403; // 403 = valid keys but no permission
         res.json({ connected, message: connected ? 'Razorpay connection successful' : 'Invalid Razorpay credentials' });
