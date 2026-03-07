@@ -13,6 +13,8 @@ import {
     CalendarDays, Clock, Receipt, FilePlus2, HelpCircle, Monitor, Globe, LifeBuoy, CreditCard
 } from 'lucide-react';
 import TrialBanner from '../../components/TrialBanner';
+import SubscriptionExpiredWall from '../../components/SubscriptionExpiredWall';
+import { useSubscription } from '../../lib/useSubscription';
 import clsx from 'clsx';
 import NotificationsPanel from '../../components/NotificationsPanel';
 
@@ -118,6 +120,7 @@ function Sidebar() {
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
     const { user, isLoading } = useAuth();
+    const { isExpired } = useSubscription();
     const router = useRouter();
 
     useEffect(() => {
@@ -161,6 +164,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
                 </header>
 
                 <TrialBanner />
+                {isExpired && <SubscriptionExpiredWall />}
                 <div className="flex-1 p-6 page-enter">
                     {children}
                 </div>

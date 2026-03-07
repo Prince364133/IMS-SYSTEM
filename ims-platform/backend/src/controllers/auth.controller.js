@@ -52,6 +52,17 @@ exports.register = async (req, res, next) => {
             employeeId = `EMP-${String(count + 1).padStart(4, '0')}`;
         }
 
+        // Enforce user limit if not the first admin
+        if (adminExists) {
+            const limitCheck = await BillingService.enforceUserLimit();
+            if (!limitCheck.allowed) {
+                return res.status(403).json({
+                    error: `User limit reached for your ${limitCheck.plan} plan (${limitCheck.current}/${limitCheck.max}). Please upgrade.`,
+                    limitReached: true
+                });
+            }
+        }
+
         const user = await User.create({ name, email, password, roles: safeRoles, employeeId });
         const token = signAccessToken(user._id);
         const refreshToken = signRefreshToken(user._id);

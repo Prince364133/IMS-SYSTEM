@@ -47,9 +47,9 @@ export default function SubscriptionsPage() {
             </div>
             <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden relative">
                 <table className="w-full text-sm">
-                    <thead><tr className="bg-slate-50/80 border-b border-slate-200">{['Company', 'Plan', 'Status', 'Payment', 'Renewal Date', 'Amount', 'Actions'].map(h => <th key={h} className="text-left px-6 py-4 text-slate-500 font-bold text-[10px] uppercase tracking-[0.1em]">{h}</th>)}</tr></thead>
+                    <thead><tr className="bg-slate-50/80 border-b border-slate-200">{['Company', 'Plan', 'Status', 'Trial Period', 'Payment', 'Renewal Date', 'Amount', 'Actions'].map(h => <th key={h} className="text-left px-6 py-4 text-slate-500 font-bold text-[10px] uppercase tracking-[0.1em]">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? [...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={7}><div className="h-4 bg-slate-100 rounded-full mx-6 my-5 w-3/4" /></td></tr>)
+                        {loading ? [...Array(5)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={8}><div className="h-4 bg-slate-100 rounded-full mx-6 my-5 w-3/4" /></td></tr>)
                             : subs.map(s => (
                                 <tr key={s._id} className="hover:bg-sky-50/30 transition-all group">
                                     <td className="px-6 py-5">
@@ -63,6 +63,14 @@ export default function SubscriptionsPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5"><span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${STATUS_COLORS[s.status] || 'bg-slate-100 text-slate-500'}`}>{s.status}</span></td>
+                                    <td className="px-6 py-5">
+                                        {s.trialStartDate ? (
+                                            <div className="space-y-0.5">
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Starts: {new Date(s.trialStartDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
+                                                <div className="text-[10px] text-rose-500 font-bold uppercase tracking-tight">Ends: {new Date(s.trialEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
+                                            </div>
+                                        ) : <span className="text-slate-300 text-[10px] uppercase font-bold tracking-widest">No Trial</span>}
+                                    </td>
                                     <td className="px-6 py-5">
                                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center w-fit gap-1.5 ${s.paymentStatus === 'paid' ? 'text-emerald-600 bg-emerald-50 border border-emerald-100' : s.paymentStatus === 'failed' ? 'text-rose-600 bg-rose-50 border border-rose-100' : 'text-amber-600 bg-amber-50 border border-amber-100'}`}>
                                             <div className={`w-1.5 h-1.5 rounded-full ${s.paymentStatus === 'paid' ? 'bg-emerald-500' : s.paymentStatus === 'failed' ? 'bg-rose-500' : 'bg-amber-500'}`} />
