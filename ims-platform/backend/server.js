@@ -42,6 +42,7 @@ const leaveRoutes = require('./src/routes/leave.routes');
 const superAdminRoutes = require('./src/routes/superadmin.routes');
 const supportRoutes = require('./src/routes/support.routes');
 const billingRoutes = require('./src/routes/billing.routes');
+const subscriptionGuard = require('./src/middleware/subscription-guard');
 const SubscriptionCronService = require('./src/services/subscriptionCron.service');
 
 // ─── App setup ────────────────────────────────────────────────────────────────
@@ -129,6 +130,10 @@ app.use('/api/inventory', require('./src/routes/inventory.routes'));
 app.use('/api/assets', require('./src/routes/asset.routes'));
 app.use('/api/company-config', require('./src/routes/company-config.routes'));
 app.use('/api/setup', require('./src/routes/setup.routes'));
+
+// ─── Global Subscription Guard ────────────────────────────────────────────────
+// Protects all following routes based on trial/plan status
+app.use(subscriptionGuard);
 
 // ─── Super Admin (isolated) ────────────────────────────────────────────────────
 app.use('/api/superadmin', superAdminRoutes);
