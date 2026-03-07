@@ -96,6 +96,9 @@ app.use(globalLimiter);
 // ─── Sentry request handler ───────────────────────────────────────────────────
 app.use(Sentry.Handlers.requestHandler());
 
+// ─── Multi-Tenant DB Middleware ────────────────────────────────────────────────
+app.use(require('./src/middleware/tenant-db'));
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);

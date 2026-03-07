@@ -23,31 +23,6 @@ function LoginForm() {
     const [mfaToken, setMfaToken] = useState('');
     const [mfaUserId, setMfaUserId] = useState('');
 
-    // DB Setup state
-    const [setupRequired, setSetupRequired] = useState(false);
-    const [dbChecking, setDbChecking] = useState(true);
-    const [dbUsername, setDbUsername] = useState('');
-    const [dbPassword, setDbPassword] = useState('');
-    const [dbCluster, setDbCluster] = useState('');
-
-    useEffect(() => {
-        const checkSetup = async () => {
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-                const res = await fetch(`${apiUrl}/api/setup/status`);
-                const data = await res.json();
-                if (data.success && !data.isConfigured) {
-                    setSetupRequired(true);
-                }
-            } catch (error) {
-                console.error('Failed to check setup status:', error);
-            } finally {
-                setDbChecking(false);
-            }
-        };
-        checkSetup();
-    }, []);
-
     const ROLE_DASHBOARD: Record<string, string> = {
         admin: '/dashboard',
         manager: '/dashboard',
@@ -70,7 +45,13 @@ function LoginForm() {
                 router.push('/dashboard');
             }
         } catch (err: any) {
-            toast.error(err?.response?.data?.error || 'Login failed');
+            const errorData = err?.response?.data;
+            if (errorData?.setupToken) {
+                toast.error('Setup incomplete. Please configure your database.');
+                router.push(`/signup?step=db_config&token=${errorData.setupToken}`);
+            } else {
+                toast.error(errorData?.error || 'Login failed');
+            }
         } finally {
             setLoading(false);
         }
@@ -90,79 +71,10 @@ function LoginForm() {
         }
     };
 
-    const handleSetupDb = async (e: FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            let username = dbUsername.trim();
-            let password = dbPassword.trim();
-            let cluster = dbCluster.trim();
-
-            // Robust Parser: If user pasted a full URI into the cluster field, extract the components
-            if (cluster.includes('mongodb+srv://') || cluster.includes('://')) {
-                const fullUri = cluster.includes('://') ? cluster : `mongodb+srv://${cluster}`;
-                try {
-                    // Extract username, password and host
-                    const uriPattern = /mongodb\+srv:\/\/([^:]+):([^@]+)@([^/?#]+)/;
-                    const match = fullUri.match(uriPattern);
-
-                    if (match) {
-                        username = decodeURIComponent(match[1]);
-                        password = decodeURIComponent(match[2]);
-                        cluster = match[3];
-
-                        // Update UI states to reflect parsed values
-                        setDbUsername(username);
-                        setDbPassword(password);
-                        setDbCluster(cluster);
-                        toast.success('URI automatically parsed!');
-                    } else {
-                        // Just strip the protocol if it's there without credentials
-                        cluster = cluster.replace(/^mongodb\+srv:\/\//, '').split('/')[0].split('?')[0];
-                        setDbCluster(cluster);
-                    }
-                } catch (parseError) {
-                    console.error('URI Parse Error:', parseError);
-                }
-            }
-
-            // Final safety check: strip any remaining protocol or port if SRV is used
-            cluster = cluster.replace(/^mongodb\+srv:\/\//, '').split(':')[0].split('/')[0];
-
-            const connectionString = `mongodb+srv://${username}:${password}@${cluster}/?retryWrites=true&w=majority&appName=Cluster0`;
-
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-            const res = await fetch(`${apiUrl}/api/setup/database`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ connectionString }),
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                toast.success(data.message || 'Database configured successfully!');
-                setSetupRequired(false);
-                setDbUsername('');
-                setDbPassword('');
-                setDbCluster('');
-                // Redirect to Signup to create the first admin
-                router.push('/signup');
-            } else {
-                toast.error(data.error || 'Failed to configure database');
-            }
-        } catch (error) {
-            toast.error('Network error during database setup');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
         <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-50/50 via-gray-50 to-white flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
             {/* Background decorative elements */}
             <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-            <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
             <div className="sm:mx-auto sm:w-full sm:max-w-[480px] relative z-10 space-y-8">
                 {/* Logo and Header */}
@@ -186,130 +98,7 @@ function LoginForm() {
 
                 {/* Main Card */}
                 <div className="bg-white/80 backdrop-blur-xl border border-gray-100/80 rounded-[2rem] p-8 sm:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.04)] relative">
-                    {dbChecking ? (
-                        <div className="flex flex-col items-center justify-center space-y-4 py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                            <p className="text-sm font-medium text-gray-500">Connecting to platform...</p>
-                        </div>
-                    ) : setupRequired ? (
-                        <form onSubmit={handleSetupDb} className="space-y-5">
-                            <div className="text-center mb-6">
-                                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-100 mb-4 ring-4 ring-white shadow-sm">
-                                    <Database className="w-6 h-6 text-orange-600" />
-                                </div>
-                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Database Connected</h2>
-                                <p className="text-gray-500 text-sm mt-1.5 font-medium px-4">
-                                    Welcome! The IMS backend is running, but no MongoDB cluster is connected. Enter your Mongo URI to initialize and seed the system.
-                                </p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-semibold text-gray-700 block transition-colors focus-within:text-orange-600">Database Username</label>
-                                        <a
-                                            href="https://www.mongodb.com/docs/atlas/getting-started/"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-[10px] text-orange-600 hover:text-orange-700 font-medium transition-colors cursor-pointer"
-                                        >
-                                            <Info className="w-3 h-3" />
-                                            <span>Help Center</span>
-                                        </a>
-                                    </div>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-orange-600 text-gray-400">
-                                            <User className="h-5 w-5" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={dbUsername}
-                                            onChange={(e) => setDbUsername(e.target.value)}
-                                            placeholder="e.g. princegupta3641_db_user"
-                                            className="block w-full pl-11 pr-4 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-gray-700 block transition-colors focus-within:text-orange-600">Database Password</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-orange-600 text-gray-400">
-                                            <Lock className="h-5 w-5" />
-                                        </div>
-                                        <input
-                                            type="password"
-                                            value={dbPassword}
-                                            onChange={(e) => setDbPassword(e.target.value)}
-                                            placeholder="Your DB User Password"
-                                            className="block w-full pl-11 pr-4 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-gray-700 block transition-colors focus-within:text-orange-600">Cluster URL</label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-orange-600 text-gray-400">
-                                            <Globe className="h-5 w-5" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={dbCluster}
-                                            onChange={(e) => setDbCluster(e.target.value)}
-                                            placeholder="e.g. cluster0.fizmeb6.mongodb.net"
-                                            className="block w-full pl-11 pr-4 py-3.5 bg-gray-50/50 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
-                                            required
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-1 ml-1 flex items-center gap-1">
-                                        <Info className="w-2.5 h-2.5" />
-                                        Do not include "mongodb+srv://" or ending slashes
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* IP Whitelist Help Banner */}
-                            <a
-                                href="https://cloud.mongodb.com/v2/69aa1cb73d3bc73f58124828#/security/network/accessList"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-start gap-3 p-3.5 bg-blue-50 border border-blue-200 rounded-2xl hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 group cursor-pointer"
-                                style={{ textDecoration: 'none' }}
-                            >
-                                <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                                        <line x1="12" y1="8" x2="12" y2="12" />
-                                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                                    </svg>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-blue-800 mb-0.5">Connection failing? IP not whitelisted?</p>
-                                    <p className="text-[11px] text-blue-600 leading-relaxed">
-                                        Click here → MongoDB Atlas IP Access List → click <span className="font-bold">&quot;Add Current IP Address&quot;</span> to allow your device.
-                                    </p>
-                                </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-blue-400 group-hover:text-blue-600 flex-shrink-0 mt-0.5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                    <polyline points="15 3 21 3 21 9" />
-                                    <line x1="10" y1="14" x2="21" y2="3" />
-                                </svg>
-                            </a>
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full py-3.5 mt-2 rounded-xl font-semibold text-white bg-orange-600 hover:bg-orange-700 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(234,88,12,0.25)] hover:shadow-[0_6px_20px_rgba(234,88,12,0.3)] disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                                {loading ? 'Connecting & Seeding...' : 'Connect to MongoDB'}
-                            </button>
-
-                        </form>
-                    ) : !mfaRequired ? (
+                    {!mfaRequired ? (
                         <form onSubmit={handleLogin} className="space-y-5">
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-gray-700 block transition-colors focus-within:text-primary">Email Address</label>

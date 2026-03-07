@@ -19,6 +19,13 @@ async function protect(req, res, next) {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Ensure multitenancy DB connection is established by proceeding middleware
+        if (!req.tenantDb) {
+            return res.status(500).json({ error: 'Tenant Database Connection Missing. Please verify your company ID.' });
+        }
+
+        const User = req.tenantDb.model('User');
         const user = await User.findById(decoded.id).select('+mfaSecret').lean();
 
         if (!user) {
@@ -29,7 +36,9 @@ async function protect(req, res, next) {
             return res.status(401).json({ error: 'Your account has been deactivated.' });
         }
 
+        // Attach user and decoded companyId
         req.user = user;
+        req.user.companyId = decoded.companyId || req.company?._id;
         next();
     } catch (err) {
         if (err.name === 'TokenExpiredError') {
@@ -45,8 +54,8 @@ async function protect(req, res, next) {
 /**
  * Sign an access token
  */
-function signAccessToken(userId) {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+function signAccessToken(userId, companyId) {
+    return jwt.sign({ id: userId, companyId }, process.env.JWT_SECRET, {
         expiresIn: `${process.env.ACCESS_TOKEN_EXPIRE_MINUTES || 15}m`,
     });
 }
@@ -54,8 +63,8 @@ function signAccessToken(userId) {
 /**
  * Sign a refresh token
  */
-function signRefreshToken(userId) {
-    return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
+function signRefreshToken(userId, companyId) {
+    return jwt.sign({ id: userId, companyId }, process.env.JWT_REFRESH_SECRET, {
         expiresIn: `${process.env.REFRESH_TOKEN_EXPIRE_DAYS || 7}d`,
     });
 }
