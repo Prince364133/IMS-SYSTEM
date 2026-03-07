@@ -100,7 +100,13 @@ exports.configureTenant = async (req, res) => {
         if (manualConnectionString) {
             connectionString = manualConnectionString;
         } else if (username && password && clusterUrl) {
-            const cleanCluster = clusterUrl.replace(/^mongodb\+srv:\/\//i, '').split('/')[0];
+            let cleanCluster = clusterUrl.trim();
+            cleanCluster = cleanCluster.replace(/^mongodb(\+srv)?:\/\//i, ''); // Remove protocol
+            if (cleanCluster.includes('@')) {
+                cleanCluster = cleanCluster.split('@').pop(); // Remove credentials
+            }
+            cleanCluster = cleanCluster.split('/')[0].split('?')[0]; // Remove path and query params
+
             connectionString = `mongodb+srv://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${cleanCluster}/?retryWrites=true&w=majority`;
         }
 
@@ -200,7 +206,13 @@ exports.configureDatabase = async (req, res, next) => {
         if (manualConnectionString) {
             connectionString = manualConnectionString;
         } else if (username && password && clusterUrl) {
-            const cleanCluster = clusterUrl.replace(/^mongodb\+srv:\/\//i, '').split('/')[0];
+            let cleanCluster = clusterUrl.trim();
+            cleanCluster = cleanCluster.replace(/^mongodb(\+srv)?:\/\//i, ''); // Remove protocol
+            if (cleanCluster.includes('@')) {
+                cleanCluster = cleanCluster.split('@').pop(); // Remove credentials
+            }
+            cleanCluster = cleanCluster.split('/')[0].split('?')[0]; // Remove path and query params
+
             connectionString = `mongodb+srv://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${cleanCluster}/?retryWrites=true&w=majority`;
         }
 

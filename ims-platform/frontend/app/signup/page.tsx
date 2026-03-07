@@ -165,7 +165,7 @@ function SignupForm() {
                                         className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600/50 outline-none transition-all"
                                     />
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-1">Exclude 'mongodb+srv://'</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Paste your cluster domain or full connection string URI.</p>
                             </div>
                             <button
                                 type="submit"
