@@ -193,10 +193,14 @@ exports.configureTenant = async (req, res) => {
     } catch (err) {
         console.error('Configure Tenant Error:', err);
         let errorMsg = err.message || 'Failed to connect to the database.';
+
+        // Handle common MongoDB connection errors with user-friendly messages
         if (errorMsg.includes('authentication failed')) {
             errorMsg = 'Authentication failed: Please check your Database Username and Password.';
         } else if (errorMsg.includes('querySrv ENOTFOUND') || errorMsg.includes('getaddrinfo ENOTFOUND')) {
             errorMsg = 'Cluster not found: Please check your Cluster URL.';
+        } else if (errorMsg.includes('ssl3_read_bytes') || errorMsg.includes('alert number 80')) {
+            errorMsg = 'IP Whitelist Error: Your current IP address is blocked by MongoDB Atlas. Please go to your MongoDB Atlas Dashboard -> Network Access -> Add IP Address, and choose "Allow Access From Anywhere" (0.0.0.0/0) or add your current IP.';
         }
 
         res.status(500).json({ success: false, error: errorMsg });
@@ -266,6 +270,17 @@ exports.configureDatabase = async (req, res, next) => {
 
     } catch (err) {
         console.error('Setup Database Error:', err);
-        res.status(500).json({ success: false, error: 'Failed to connect to the database.' });
+        let errorMsg = err.message || 'Failed to connect to the database.';
+
+        // Handle common MongoDB connection errors
+        if (errorMsg.includes('authentication failed')) {
+            errorMsg = 'Authentication failed: Please check your Database Username and Password.';
+        } else if (errorMsg.includes('querySrv ENOTFOUND') || errorMsg.includes('getaddrinfo ENOTFOUND')) {
+            errorMsg = 'Cluster not found: Please check your Cluster URL.';
+        } else if (errorMsg.includes('ssl3_read_bytes') || errorMsg.includes('alert number 80')) {
+            errorMsg = 'IP Whitelist Error: Your current IP address is blocked by MongoDB Atlas. Please go to your MongoDB Atlas Dashboard -> Network Access -> Add IP Address, and choose "Allow Access From Anywhere" (0.0.0.0/0) or add your current IP.';
+        }
+
+        res.status(500).json({ success: false, error: errorMsg });
     }
 };
