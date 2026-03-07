@@ -1,6 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
-const { getIo } = require('../../sockets'); // If needed inside schemas
+const { getIo } = require('../sockets'); // If needed inside schemas
 
 // Cache of tenant connections to avoid exhausting connection pools
 const tenantConnections = {};
