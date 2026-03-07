@@ -62,6 +62,7 @@ exports.registerTenant = async (req, res) => {
             adminName,
             adminEmail: adminEmail.toLowerCase(),
             adminPasswordHash,
+            adminRole: 'admin', // Default role for the person who signs up
             databaseConfigured: false,
             subscriptionStatus: 'trial',
             metadata: { setupToken }
@@ -167,7 +168,8 @@ exports.configureTenant = async (req, res) => {
                     name: company.adminName,
                     email: company.adminEmail.toLowerCase(),
                     password: company.adminPasswordHash,
-                    roles: ['admin'],
+                    role: company.adminRole || 'admin',
+                    roles: [company.adminRole || 'admin'],
                     isActive: true
                 }
             },

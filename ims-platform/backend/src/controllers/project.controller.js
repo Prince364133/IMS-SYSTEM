@@ -1,8 +1,5 @@
 'use strict';
 
-const Project = require('../models/Project');
-const Task = require('../models/Task');
-const Notification = require('../models/Notification');
 const { getIo, onlineUsers } = require('../sockets');
 const { logAction } = require('../middleware/audit');
 const { triggerN8nWebhook } = require('../routes/webhook.routes');
@@ -10,6 +7,8 @@ const AutomationService = require('../services/automation.service');
 
 exports.getProjects = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
+        const Client = req.tenantDb.model('Client');
         const { search, status, page = 1, limit = 50 } = req.query;
         const query = {};
 
@@ -19,7 +18,6 @@ exports.getProjects = async (req, res, next) => {
         }
         // Clients only see their linked projects
         if (req.user.role === 'client') {
-            const Client = require('../models/Client');
             const client = await Client.findOne({ userId: req.user._id });
             if (client) {
                 query.clientIds = client._id;
@@ -28,7 +26,8 @@ exports.getProjects = async (req, res, next) => {
             }
         }
         if (status) query.status = status;
-        if (search) query.$text = { $search: search };
+        // Smart search fallback if $text index is not ready or complex
+        if (search) query.name = { $regex: search, $options: 'i' };
 
         const skip = (Number(page) - 1) * Number(limit);
         const [projects, total] = await Promise.all([
@@ -49,6 +48,7 @@ exports.getProjects = async (req, res, next) => {
 
 exports.createProject = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
         const project = await Project.create({ ...req.body, ownerId: req.user._id });
         await logAction(req.user._id, 'CREATE_PROJECT', 'project', project._id, { name: project.name }, req);
 
@@ -81,6 +81,7 @@ exports.createProject = async (req, res, next) => {
 
 exports.getProjectById = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
         const project = await Project.findById(req.params.id)
             .populate('ownerId', 'name email photoUrl')
             .populate('clientIds', 'name company email phone')
@@ -93,6 +94,7 @@ exports.getProjectById = async (req, res, next) => {
 
 exports.updateProject = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
         const oldProject = await Project.findById(req.params.id);
         if (!oldProject) return res.status(404).json({ error: 'Project not found' });
 
@@ -126,6 +128,8 @@ exports.updateProject = async (req, res, next) => {
 
 exports.deleteProject = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
+        const Task = req.tenantDb.model('Task');
         const project = await Project.findById(req.params.id);
         if (!project) return res.status(404).json({ error: 'Project not found' });
 
@@ -145,6 +149,7 @@ exports.deleteProject = async (req, res, next) => {
 
 exports.updateMembers = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
         const { memberIds } = req.body;
         const project = await Project.findByIdAndUpdate(
             req.params.id, { memberIds }, { new: true }
@@ -156,6 +161,7 @@ exports.updateMembers = async (req, res, next) => {
 
 exports.updateClients = async (req, res, next) => {
     try {
+        const Project = req.tenantDb.model('Project');
         const { clientIds } = req.body;
         const project = await Project.findByIdAndUpdate(
             req.params.id, { clientIds }, { new: true }
@@ -167,6 +173,7 @@ exports.updateClients = async (req, res, next) => {
 
 exports.getProjectTasks = async (req, res, next) => {
     try {
+        const Task = req.tenantDb.model('Task');
         const tasks = await Task.find({ projectId: req.params.id })
             .populate('assigneeId', 'name email photoUrl')
             .sort({ createdAt: -1 })
@@ -177,6 +184,10 @@ exports.getProjectTasks = async (req, res, next) => {
 
 exports.getProjectNotes = async (req, res, next) => {
     try {
+        // Fallback for missing/optional models like Note
+        let Note;
+        try { Note = req.tenantDb.model('Note'); } catch (e) { return res.json({ notes: [] }); }
+
         const notes = await Note.find({ projectId: req.params.id })
             .populate('createdBy', 'name email photoUrl role')
             .sort({ createdAt: -1 })
@@ -187,6 +198,9 @@ exports.getProjectNotes = async (req, res, next) => {
 
 exports.createProjectNote = async (req, res, next) => {
     try {
+        let Note;
+        try { Note = req.tenantDb.model('Note'); } catch (e) { return res.status(400).json({ error: 'Notes feature not supported in current DB version' }); }
+
         const note = await Note.create({
             content: req.body.content,
             projectId: req.params.id,

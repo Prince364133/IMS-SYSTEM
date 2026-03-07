@@ -1,8 +1,5 @@
 'use strict';
 
-const Task = require('../models/Task');
-const Notification = require('../models/Notification');
-const Project = require('../models/Project');
 const EmailService = require('../services/email.service');
 const { getIo, onlineUsers } = require('../sockets');
 const { logAction } = require('../middleware/audit');
@@ -10,6 +7,7 @@ const AutomationService = require('../services/automation.service');
 
 exports.getTasks = async (req, res, next) => {
     try {
+        const Task = req.tenantDb.model('Task');
         const { projectId, assigneeId, status, page = 1, limit = 100 } = req.query;
         const query = {};
         if (projectId) query.projectId = projectId;
@@ -32,6 +30,8 @@ exports.getTasks = async (req, res, next) => {
 
 exports.createTask = async (req, res, next) => {
     try {
+        const Task = req.tenantDb.model('Task');
+        const Project = req.tenantDb.model('Project');
         const task = await Task.create({ ...req.body, createdBy: req.user._id });
         await logAction(req.user._id, 'CREATE_TASK', 'task', task._id, { title: task.title }, req);
 
@@ -48,7 +48,7 @@ exports.createTask = async (req, res, next) => {
         }
 
         if (task.projectId) {
-            await updateProjectProgress(task.projectId);
+            await updateProjectProgress(task.projectId, req.tenantDb);
         }
 
         res.status(201).json({ task });
@@ -57,6 +57,7 @@ exports.createTask = async (req, res, next) => {
 
 exports.getTaskById = async (req, res, next) => {
     try {
+        const Task = req.tenantDb.model('Task');
         const task = await Task.findById(req.params.id)
             .populate('assigneeId', 'name email photoUrl')
             .populate('projectId', 'name status').lean();
@@ -67,6 +68,8 @@ exports.getTaskById = async (req, res, next) => {
 
 exports.updateTask = async (req, res, next) => {
     try {
+        const Task = req.tenantDb.model('Task');
+        const Project = req.tenantDb.model('Project');
         const oldTask = await Task.findById(req.params.id);
         if (!oldTask) return res.status(404).json({ error: 'Task not found' });
 
@@ -104,13 +107,9 @@ exports.updateTask = async (req, res, next) => {
                 metadata: { taskName: task.title }
             });
         }
-        // Notify if status changed and not updated by assignee
-        if (req.body.status && req.body.status !== oldTask.status && oldTask.assigneeId?.toString() === req.user._id.toString()) {
-            // Mention logic could go here to notify PM/creator
-        }
 
         if (task.projectId) {
-            await updateProjectProgress(task.projectId);
+            await updateProjectProgress(task.projectId, req.tenantDb);
         }
 
         res.json({ task });
@@ -119,17 +118,21 @@ exports.updateTask = async (req, res, next) => {
 
 exports.deleteTask = async (req, res, next) => {
     try {
+        const Task = req.tenantDb.model('Task');
         const task = await Task.findByIdAndUpdate(req.params.id, { deletedAt: new Date() });
         if (task && task.projectId) {
-            await updateProjectProgress(task.projectId);
+            await updateProjectProgress(task.projectId, req.tenantDb);
         }
         await logAction(req.user._id, 'DELETE_TASK', 'task', req.params.id, {}, req);
         res.json({ message: 'Task deleted' });
     } catch (err) { next(err); }
 };
-const updateProjectProgress = async (projectId) => {
-    if (!projectId) return;
+
+const updateProjectProgress = async (projectId, tenantDb) => {
+    if (!projectId || !tenantDb) return;
     try {
+        const Task = tenantDb.model('Task');
+        const Project = tenantDb.model('Project');
         const stats = await Task.aggregate([
             { $match: { projectId: new (require('mongoose').Types.ObjectId)(String(projectId)), deletedAt: null } },
             {

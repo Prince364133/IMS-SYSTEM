@@ -6,7 +6,8 @@ import { useSettings } from '../../../lib/settings-context';
 import {
     Settings as SettingsIcon, User, Bell, Shield, Globe, Loader2, Palette,
     Users, FileText, Key, ChevronDown, Check, ClipboardList, Save, Eye, EyeOff,
-    Mail, Activity, Server, ShieldCheck, ShieldAlert, Brain, Cpu, Zap, Info, ExternalLink, BookOpen, FolderKanban, Building2, Database
+    Mail, Activity, Server, ShieldCheck, ShieldAlert, Brain, Cpu, Zap, Info, ExternalLink, BookOpen, FolderKanban, Building2, Database,
+    Trash2, AlertCircle
 } from 'lucide-react';
 import api from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -55,10 +56,12 @@ function InfoLink({ href, label }: { href: string; label: string }) {
 
 /* ── Role Management Tab ── */
 function RolesTab() {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [updating, setUpdating] = useState<string | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
     useEffect(() => {
         api.get('/api/users', { params: { limit: 200 } })
@@ -77,6 +80,18 @@ function RolesTab() {
         } finally { setUpdating(null); }
     }
 
+    async function deleteUser(userId: string) {
+        setUpdating(userId);
+        try {
+            await api.delete(`/api/users/${userId}`);
+            setUsers(prev => prev.filter(u => u._id !== userId));
+            toast.success('User removed from company');
+            setConfirmDelete(null);
+        } catch (e: any) {
+            toast.error(e?.response?.data?.error || 'Failed to delete user');
+        } finally { setUpdating(null); }
+    }
+
     const filtered = users.filter(u =>
         u.name?.toLowerCase().includes(search.toLowerCase()) ||
         u.email?.toLowerCase().includes(search.toLowerCase())
@@ -85,65 +100,136 @@ function RolesTab() {
     if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>;
 
     return (
-        <div>
-            <div className="mb-4 flex gap-3">
-                <input
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search users..."
-                    className="input w-full max-w-xs"
-                />
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900">User Roles & Access</h3>
+                    <p className="text-sm text-gray-500">Manage permissions for your company members</p>
+                </div>
+                <div className="relative group">
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search by name or email..."
+                        className="input w-full sm:w-72 pl-10 bg-gray-50/50"
+                    />
+                    <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-indigo-500 transition-colors" />
+                </div>
             </div>
-            <div className="card">
+
+            <div className="card overflow-hidden border-gray-100 shadow-sm">
                 <div className="table-wrapper">
                     <table className="table">
                         <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Department</th>
-                                <th>Current Role</th>
-                                <th>Change Role</th>
+                            <tr className="bg-gray-50/50">
+                                <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-wider text-gray-400">User Details</th>
+                                <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-wider text-gray-400">Department</th>
+                                <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-wider text-gray-400">Current Role</th>
+                                <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-wider text-gray-400 text-center">Manage Access</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {filtered.map(u => (
-                                <tr key={u._id}>
-                                    <td>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                                <span className="text-white text-xs font-bold">{u.name?.[0]?.toUpperCase()}</span>
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900 text-sm">{u.name}</p>
-                                                <p className="text-xs text-gray-400">{u.email}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="text-sm text-gray-500">{u.department || '—'}</td>
-                                    <td>
-                                        <span className={clsx('badge border text-xs capitalize', ROLE_COLORS[u.role] || 'badge-gray')}>
-                                            {u.role}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="flex items-center gap-1.5">
-                                            <select
-                                                defaultValue={u.role}
-                                                onChange={e => changeRole(u._id, e.target.value)}
-                                                disabled={updating === u._id}
-                                                className="select text-xs py-1 w-32"
-                                            >
-                                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
-                                            {updating === u._id && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />}
-                                        </div>
+                        <tbody className="divide-y divide-gray-50">
+                            {filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="py-12 text-center">
+                                        <Users className="w-10 h-10 text-gray-100 mx-auto mb-3" />
+                                        <p className="text-gray-400 font-medium">No users found</p>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                filtered.map(u => (
+                                    <tr key={u._id} className="hover:bg-gray-50/30 transition-colors">
+                                        <td className="py-4 px-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center border border-indigo-100/50">
+                                                        <span className="text-indigo-600 text-sm font-bold">{u.name?.[0]?.toUpperCase()}</span>
+                                                    </div>
+                                                    {u.isActive && <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full shadow-sm" />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
+                                                    <p className="text-[11px] text-gray-400 font-mono tracking-tight">{u.email}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-lg w-max">
+                                                <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{u.department || 'General'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <span className={clsx(
+                                                'badge px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border',
+                                                ROLE_COLORS[u.role] || 'badge-gray'
+                                            )}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex items-center justify-center gap-3">
+                                                <select
+                                                    value={u.role}
+                                                    onChange={e => changeRole(u._id, e.target.value)}
+                                                    disabled={updating === u._id || currentUser?._id === u._id}
+                                                    className="select text-[11px] h-8 py-1 w-28 bg-white border-gray-100 focus:border-indigo-500"
+                                                >
+                                                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                                                </select>
+
+                                                {currentUser?._id !== u._id ? (
+                                                    <button
+                                                        onClick={() => setConfirmDelete(u._id)}
+                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                        title="Delete User"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                ) : (
+                                                    <div className="w-6.5" />
+                                                )}
+
+                                                {updating === u._id && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* Deletion Confirmation Modal */}
+            {confirmDelete && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm relative shadow-2xl border border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4 mx-auto">
+                            <AlertCircle className="w-6 h-6 text-red-500" />
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-900 text-center mb-2">Delete User?</h4>
+                        <p className="text-sm text-gray-500 text-center mb-6">
+                            Are you sure you want to remove <b>{users.find(u => u._id === confirmDelete)?.name}</b>? This will permanently deactivate their access to the platform.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="flex-1 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => deleteUser(confirmDelete)}
+                                disabled={updating === confirmDelete}
+                                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                {updating === confirmDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Yes, Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

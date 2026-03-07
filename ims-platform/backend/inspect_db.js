@@ -5,8 +5,8 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ims-superadmin';
-const TEST_PASSWORD = '364133';
-const TARGET_EMAIL = 'zsnapyproo@gmail.com'.toLowerCase();
+const TARGET_EMAIL = (process.argv[2] || 'zsnapyproo@gmail.com').toLowerCase();
+const TEST_PASSWORD = process.argv[3] || '364133';
 
 async function inspect() {
     try {
@@ -17,7 +17,27 @@ async function inspect() {
         const company = await Company.findOne({ adminEmail: TARGET_EMAIL }).select('+adminPasswordHash');
 
         if (!company) {
-            console.log(`Company not found for ${TARGET_EMAIL}`);
+            console.log(`Company not found for ${TARGET_EMAIL} in Superadmin DB (as adminEmail)`);
+            // Check if user exists in any company
+            const allCompanies = await Company.find({});
+            console.log(`Checking ${allCompanies.length} companies...`);
+
+            for (const c of allCompanies) {
+                if (c.mongoUri) {
+                    try {
+                        const conn = await mongoose.createConnection(c.mongoUri).asPromise();
+                        const User = conn.model('User', new mongoose.Schema({ email: String, role: String, password: { type: String, select: true } }));
+                        const user = await User.findOne({ email: TARGET_EMAIL });
+                        if (user) {
+                            console.log(`Found user in company: ${c.companyName} (${c.tenantId})`);
+                            console.log(`Role: ${user.role}`);
+                            const matchTenant = await bcrypt.compare(TEST_PASSWORD, user.password);
+                            console.log(`Password "${TEST_PASSWORD}" matches: ${matchTenant}`);
+                        }
+                        await conn.close();
+                    } catch (e) { }
+                }
+            }
         } else {
             console.log(`Company: ${company.companyName}`);
             const matchSuper = await bcrypt.compare(TEST_PASSWORD, company.adminPasswordHash);
@@ -26,17 +46,16 @@ async function inspect() {
             if (company.mongoUri) {
                 try {
                     const conn = await mongoose.createConnection(company.mongoUri).asPromise();
-                    const User = conn.model('User', new mongoose.Schema({ email: String, password: { type: String, select: true } }));
-                    const user = await User.findOne({ email: TARGET_EMAIL });
+                    const User = conn.model('User', new mongoose.Schema({}, { strict: false }));
+                    const user = await User.findOne({ email: TARGET_EMAIL }).lean();
 
                     if (!user) {
                         console.log(`User ${TARGET_EMAIL} not found in Tenant DB`);
                     } else {
-                        const matchTenant = await bcrypt.compare(TEST_PASSWORD, user.password);
-                        console.log(`Password "${TEST_PASSWORD}" matches Tenant Hash: ${matchTenant}`);
-                        console.log(`Tenant Hash: ${user.password}`);
-                        console.log(`Super Hash:  ${company.adminPasswordHash}`);
-                        console.log(`Hashes Equal? ${user.password === company.adminPasswordHash}`);
+                        console.log(`User Document:`, JSON.stringify(user, null, 2));
+                        console.log(`User: ${TARGET_EMAIL}`);
+                        console.log(`Roles Array:`, user.roles);
+                        console.log(`Role Field:`, user.role);
                     }
                     await conn.close();
                 } catch (err) {

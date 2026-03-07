@@ -1,11 +1,11 @@
 'use strict';
 
-const User = require('../models/User');
 const { logAction } = require('../middleware/audit');
 const { deleteFromCloudinary } = require('../config/cloudinary');
 
 exports.getUsers = async (req, res, next) => {
     try {
+        const User = req.tenantDb.model('User');
         const { search, role, page = 1, limit = 50 } = req.query;
         const query = {};
         if (search) query.$or = [
@@ -27,6 +27,7 @@ exports.getUsers = async (req, res, next) => {
 
 exports.getUserById = async (req, res, next) => {
     try {
+        const User = req.tenantDb.model('User');
         const user = await User.findById(req.params.id).lean();
         if (!user) return res.status(404).json({ error: 'User not found' });
         res.json({ user });
@@ -35,6 +36,7 @@ exports.getUserById = async (req, res, next) => {
 
 exports.updateUser = async (req, res, next) => {
     try {
+        const User = req.tenantDb.model('User');
         const { id } = req.params;
         const forbidden = ['password', 'email', 'refreshTokens', 'mfaSecret'];
         if (req.user.role !== 'admin') {
@@ -42,23 +44,24 @@ exports.updateUser = async (req, res, next) => {
         }
         forbidden.forEach((f) => delete req.body[f]);
 
-        // Handle multi-role vs single-role input
-        if (req.body.roles && !Array.isArray(req.body.roles)) {
-            req.body.roles = [req.body.roles];
-        } else if (req.body.role && !req.body.roles) {
-            req.body.roles = [req.body.role];
-        }
-
-        const user = await User.findByIdAndUpdate(id, req.body, { new: true, runValidators: true }).lean();
+        let user = await User.findById(id);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
+        // Update fields
+        Object.keys(req.body).forEach(key => {
+            user[key] = req.body[key];
+        });
+
+        await user.save();
+
         await logAction(req.user._id, 'UPDATE_USER', 'user', id, {}, req);
-        res.json({ user });
+        res.json({ user: user.toObject() });
     } catch (err) { next(err); }
 };
 
 exports.deleteUser = async (req, res, next) => {
     try {
+        const User = req.tenantDb.model('User');
         const { id } = req.params;
         if (id === req.user._id.toString()) {
             return res.status(400).json({ error: 'Cannot delete your own account' });
@@ -71,6 +74,7 @@ exports.deleteUser = async (req, res, next) => {
 
 exports.updatePhoto = async (req, res, next) => {
     try {
+        const User = req.tenantDb.model('User');
         if (!req.cloudinaryResult) {
             return res.status(400).json({ error: 'Photo upload failed' });
         }

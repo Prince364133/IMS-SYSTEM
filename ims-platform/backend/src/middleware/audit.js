@@ -8,7 +8,10 @@ const AuditLog = require('../models/AuditLog');
  */
 async function logAction(userId, action, resourceType = '', resourceId = '', details = {}, req = null) {
     try {
-        await AuditLog.create({
+        // Use tenant-specific AuditLog if tenant database is connected
+        const AuditLogModel = (req && req.tenantDb) ? req.tenantDb.model('AuditLog') : AuditLog;
+
+        await AuditLogModel.create({
             userId,
             action,
             resourceType,

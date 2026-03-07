@@ -1,12 +1,12 @@
 'use strict';
 
-const Client = require('../models/Client');
 const { logAction } = require('../middleware/audit');
 const { triggerN8nWebhook } = require('../routes/webhook.routes');
 const AutomationService = require('../services/automation.service');
 
 exports.getClients = async (req, res, next) => {
     try {
+        const Client = req.tenantDb.model('Client');
         const { search, page = 1, limit = 50 } = req.query;
         const query = {};
         if (search) query.$or = [
@@ -25,6 +25,7 @@ exports.getClients = async (req, res, next) => {
 
 exports.createClient = async (req, res, next) => {
     try {
+        const Client = req.tenantDb.model('Client');
         if (!req.body.clientId) {
             const count = await Client.countDocuments();
             req.body.clientId = `CLT-${String(count + 1).padStart(4, '0')}`;
@@ -36,7 +37,7 @@ exports.createClient = async (req, res, next) => {
         await AutomationService.trigger({
             eventType: 'client_created',
             triggeredBy: req.user._id,
-            targetUser: client._id, // Assume client model has a reference or we treat email as target
+            targetUser: client._id,
             relatedItem: { itemId: client._id, itemModel: 'Client' },
             description: `New client account created for ${client.name} (${client.company})`,
             metadata: { clientName: client.name, company: client.company }
@@ -56,6 +57,7 @@ exports.createClient = async (req, res, next) => {
 
 exports.getClientById = async (req, res, next) => {
     try {
+        const Client = req.tenantDb.model('Client');
         const client = await Client.findById(req.params.id)
             .populate('projectIds', 'name status priority deadline progress').lean();
         if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -65,6 +67,7 @@ exports.getClientById = async (req, res, next) => {
 
 exports.updateClient = async (req, res, next) => {
     try {
+        const Client = req.tenantDb.model('Client');
         const client = await Client.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }).lean();
         if (!client) return res.status(404).json({ error: 'Client not found' });
         res.json({ client });
@@ -73,6 +76,7 @@ exports.updateClient = async (req, res, next) => {
 
 exports.deleteClient = async (req, res, next) => {
     try {
+        const Client = req.tenantDb.model('Client');
         await Client.findByIdAndUpdate(req.params.id, { deletedAt: new Date() });
         await logAction(req.user._id, 'DELETE_CLIENT', 'client', req.params.id, {}, req);
         res.json({ message: 'Client deleted' });

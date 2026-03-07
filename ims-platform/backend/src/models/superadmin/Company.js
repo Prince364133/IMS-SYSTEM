@@ -32,6 +32,7 @@ const companySchema = new mongoose.Schema({
     adminName: { type: String, required: true, trim: true },
     adminEmail: { type: String, required: true, lowercase: true, trim: true, unique: true },
     adminPasswordHash: { type: String, required: true, select: false },
+    adminRole: { type: String, default: 'admin' },
     _mongoUri: { type: String }, // encrypted
     subscriptionPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
     subscriptionStatus: {
