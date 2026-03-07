@@ -68,6 +68,7 @@ exports.destroyTenantConnection = async (companyId) => {
  */
 function loadTenantModels(conn) {
     const jobModels = require('../models/Job');
+    const chatModels = require('../models/Chat');
     const schemas = {
         'User': require('../models/User').schema,
         'Project': require('../models/Project').schema,
@@ -80,8 +81,9 @@ function loadTenantModels(conn) {
         'Settings': require('../models/Settings').schema,
         'Document': require('../models/Document').schema,
         'Notification': require('../models/Notification').schema,
-        'Chat': require('../models/Chat').schema,
-        'AutomationLog': require('../models/superadmin/ActivityLog').schema, // Assuming ActivityLog for now or check AutomationLog.js
+        'Chat': chatModels.Chat.schema,
+        'Message': chatModels.Message.schema,
+        'AutomationLog': require('../models/AutomationLog').schema,
         'EmailLog': require('../models/EmailLog').schema,
         'AuditLog': require('../models/AuditLog').schema,
         'Salary': require('../models/Salary').schema,
@@ -91,6 +93,7 @@ function loadTenantModels(conn) {
         'CalendarEvent': require('../models/CalendarEvent').schema,
         'Asset': require('../models/Asset').schema,
         'Item': require('../models/Item').schema,
+        'Category': require('../models/Category').schema,
         'InventoryTransaction': require('../models/InventoryTransaction').schema,
         'Milestone': require('../models/Milestone').schema,
         'TimeLog': require('../models/TimeLog').schema,
