@@ -119,7 +119,7 @@ function SignupForm() {
                             <div className="space-y-1.5">
                                 <div className="flex justify-between items-center">
                                     <label className="text-sm font-semibold text-gray-700 block">Atlas Username</label>
-                                    <a href="https://cloud.mongodb.com/v2/console/clusters" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-medium bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100 transition-colors hover:bg-blue-100">
+                                    <a href="https://cloud.mongodb.com/v2/console/security/network" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-medium bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100 transition-colors hover:bg-blue-100" title="Click here to open MongoDB Atlas Network Access">
                                         <Info className="w-2.5 h-2.5" /> Atlas Guide
                                     </a>
                                 </div>
@@ -175,6 +175,18 @@ function SignupForm() {
                                 {isDbConnecting && <Loader2 className="w-4 h-4 animate-spin" />}
                                 {isDbConnecting ? 'Initializing System...' : 'Connect & Test Database'}
                             </button>
+
+                            <div className="mt-4 p-4 rounded-xl border border-amber-100 bg-amber-50 shadow-sm">
+                                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-amber-800 mb-2">
+                                    <Info className="w-4 h-4" /> Connection Issues?
+                                </h4>
+                                <ol className="text-xs text-amber-900/80 space-y-1.5 pl-5 list-decimal font-medium">
+                                    <li>Click <a href="https://cloud.mongodb.com/v2/console/security/network" target="_blank" rel="noopener noreferrer" className="font-bold underline hover:text-amber-700">Atlas Guide</a> to open MongoDB Network Access.</li>
+                                    <li>Click <span className="font-bold border border-amber-200 bg-amber-100/50 px-1 rounded">Add IP Address</span>.</li>
+                                    <li>Select <span className="font-bold">Allow Access from Anywhere</span> or add your current IP.</li>
+                                    <li>Click Confirm and wait 30 seconds before testing again.</li>
+                                </ol>
+                            </div>
                         </form>
                     ) : (
 
