@@ -145,13 +145,32 @@ exports.login = async (req, res, next) => {
 
         // 1. Identify Tenant (Company) from System Database
         const TenantMapping = require('../models/superadmin/TenantUserMapping');
-        const mapping = await TenantMapping.findOne({ email: email.toLowerCase() }).populate('companyId');
+        let mapping = await TenantMapping.findOne({ email: email.toLowerCase() }).populate('companyId');
+        let company = mapping ? mapping.companyId : null;
 
-        if (!mapping || !mapping.companyId) {
-            return res.status(401).json({ error: 'Email not registered. Please sign up or contact your administrator.' });
+        // Fallback: If no mapping is found, check if they are an unconfigured admin in the Company registry
+        if (!company) {
+            const Company = require('../models/superadmin/Company');
+            const unconfiguredCompany = await Company.findOne({ adminEmail: email.toLowerCase() }).select('+adminPasswordHash');
+
+            if (unconfiguredCompany) {
+                // Verify their password against the System DB hash
+                const isMatch = await bcrypt.compare(password, unconfiguredCompany.adminPasswordHash);
+                if (isMatch) {
+                    if (!unconfiguredCompany.databaseConfigured) {
+                        return res.status(403).json({
+                            error: 'Account registered but database not configured.',
+                            setupToken: unconfiguredCompany.metadata?.setupToken
+                        });
+                    }
+                    company = unconfiguredCompany; // Fallback assignment if somehow mapped but DB configured
+                }
+            }
         }
 
-        const company = mapping.companyId;
+        if (!company) {
+            return res.status(401).json({ error: 'Email not registered. Please sign up or contact your administrator.' });
+        }
 
         if (!company.databaseConfigured) {
             return res.status(403).json({
