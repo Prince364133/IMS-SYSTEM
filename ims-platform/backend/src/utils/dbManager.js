@@ -67,6 +67,7 @@ exports.destroyTenantConnection = async (companyId) => {
  * We require the existing model files and extract their schemas.
  */
 function loadTenantModels(conn) {
+    const jobModels = require('../models/Job');
     const schemas = {
         'User': require('../models/User').schema,
         'Project': require('../models/Project').schema,
@@ -74,14 +75,14 @@ function loadTenantModels(conn) {
         'Client': require('../models/Client').schema,
         'Attendance': require('../models/Attendance').schema,
         'Leave': require('../models/Leave').schema,
-        'Job': require('../models/Job').schema,
-        'JobApplication': require('../models/JobApplication').schema,
+        'Job': jobModels.Job.schema,
+        'Application': jobModels.Application.schema,
         'Settings': require('../models/Settings').schema,
-        'File': require('../models/File').schema,
+        'Document': require('../models/Document').schema,
         'Notification': require('../models/Notification').schema,
         'Chat': require('../models/Chat').schema,
-        'Automation': require('../models/Automation').schema,
-        'EmailTemplate': require('../models/EmailTemplate').schema,
+        'AutomationLog': require('../models/superadmin/ActivityLog').schema, // Assuming ActivityLog for now or check AutomationLog.js
+        'EmailLog': require('../models/EmailLog').schema,
         'AuditLog': require('../models/AuditLog').schema,
         'Salary': require('../models/Salary').schema,
         'Expense': require('../models/Expense').schema,
@@ -89,7 +90,8 @@ function loadTenantModels(conn) {
         'Review': require('../models/Review').schema,
         'CalendarEvent': require('../models/CalendarEvent').schema,
         'Asset': require('../models/Asset').schema,
-        'Inventory': require('../models/Inventory').schema,
+        'Item': require('../models/Item').schema,
+        'InventoryTransaction': require('../models/InventoryTransaction').schema,
         'Milestone': require('../models/Milestone').schema,
         'TimeLog': require('../models/TimeLog').schema,
     };

@@ -207,7 +207,7 @@ function SignupForm() {
                                         type="text"
                                         value={companyName}
                                         onChange={(e) => setCompanyName(e.target.value)}
-                                        placeholder="Acme Corp"
+                                        placeholder="Your Company Name"
                                         required
                                         className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600/50 focus:bg-white transition-all shadow-sm"
                                     />
@@ -239,7 +239,7 @@ function SignupForm() {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="admin@example.com"
+                                        placeholder="admin@yourdomain.com"
                                         required
                                         className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600/50 focus:bg-white transition-all shadow-sm"
                                     />
@@ -358,7 +358,7 @@ function SignupForm() {
                                     <p>2. Click the <strong>Connect</strong> button next to your cluster.</p>
                                     <p>3. Choose <strong>Drivers</strong> (Connect to your application).</p>
                                     <p>4. You will see a connection string that looks like this:<br />
-                                        <code className="block mt-1 p-2 bg-gray-100 rounded border text-xs break-all text-gray-800">mongodb+srv://&lt;username&gt;:&lt;password&gt;@<span className="bg-blue-200 text-blue-900 px-1 rounded font-bold">cluster0.abcde.mongodb.net</span>/?retryWrites=true&w=majority</code>
+                                        <code className="block mt-1 p-2 bg-gray-100 rounded border text-xs break-all text-gray-800">mongodb+srv://&lt;username&gt;:&lt;password&gt;@<span className="bg-blue-200 text-blue-900 px-1 rounded font-bold">cluster.xyz.mongodb.net</span>/?retryWrites=true&w=majority</code>
                                     </p>
                                     <p>5. Copy the connection string and paste it straight into the <strong>Cluster URL</strong> field in the IMS form.</p>
                                 </div>
