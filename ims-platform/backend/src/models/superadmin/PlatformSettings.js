@@ -42,6 +42,7 @@ const platformSettingsSchema = new mongoose.Schema({
     _razorpaySecret: { type: String },
     _razorpayWebhookSecret: { type: String },
     paymentsEnabled: { type: Boolean, default: false },
+    platformApiUrl: { type: String, default: '' },
     // SMTP
     smtpHost: { type: String },
     smtpPort: { type: Number },

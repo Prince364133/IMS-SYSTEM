@@ -17,12 +17,13 @@ exports.getConfig = async (req, res) => {
 exports.updateConfig = async (req, res) => {
     try {
         const settings = await PlatformSettings.getInstance();
-        const { razorpayKeyId, razorpaySecret, razorpayWebhookSecret, paymentsEnabled, currency } = req.body;
+        const { razorpayKeyId, razorpaySecret, razorpayWebhookSecret, paymentsEnabled, currency, platformApiUrl } = req.body;
         if (razorpayKeyId) settings.razorpayKeyId = razorpayKeyId;
         if (razorpaySecret) settings.razorpaySecret = razorpaySecret;
         if (razorpayWebhookSecret) settings.razorpayWebhookSecret = razorpayWebhookSecret;
         if (paymentsEnabled !== undefined) settings.paymentsEnabled = paymentsEnabled;
         if (currency) settings.currency = currency;
+        if (platformApiUrl !== undefined) settings.platformApiUrl = platformApiUrl;
         await settings.save();
         res.json({ message: 'Payment config updated' });
     } catch { res.status(500).json({ error: 'Failed to update config' }); }

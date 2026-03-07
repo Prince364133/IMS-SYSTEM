@@ -15,6 +15,11 @@ function verifyWebhookSecret(req, res, next) {
     next();
 }
 
+const razorpayWebhookCtrl = require('../controllers/webhooks/razorpay.controller');
+
+// ── Razorpay Webhook ──────────────────────────────────────────────────────────
+router.post('/razorpay', razorpayWebhookCtrl.handleWebhook);
+
 // ── Incoming webhooks FROM n8n ─────────────────────────────────────────────────
 router.post('/project-assigned', verifyWebhookSecret, async (req, res, next) => {
     try {

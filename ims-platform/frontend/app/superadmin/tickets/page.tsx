@@ -5,8 +5,19 @@ import { LifeBuoy, MessageSquare, CheckCircle, XCircle, Clock } from 'lucide-rea
 import Link from 'next/link';
 import saApi from '../../../lib/superadmin-api';
 
-const STATUS_COLORS: Record<string, string> = { open: 'text-amber-400 bg-amber-400/10', in_progress: 'text-blue-400 bg-blue-400/10', waiting_on_customer: 'text-purple-400 bg-purple-400/10', resolved: 'text-emerald-400 bg-emerald-400/10', closed: 'text-slate-400 bg-slate-700' };
-const PRIORITY_COLORS: Record<string, string> = { low: 'text-slate-400', medium: 'text-amber-400', high: 'text-orange-400', critical: 'text-red-400' };
+const STATUS_COLORS: Record<string, string> = {
+    open: 'text-amber-600 bg-amber-50 border border-amber-100',
+    in_progress: 'text-sky-600 bg-sky-50 border border-sky-100',
+    waiting_on_customer: 'text-indigo-600 bg-indigo-50 border border-indigo-100',
+    resolved: 'text-emerald-600 bg-emerald-50 border border-emerald-100',
+    closed: 'text-slate-500 bg-slate-100 border border-slate-200'
+};
+const PRIORITY_COLORS: Record<string, string> = {
+    low: 'text-slate-500',
+    medium: 'text-amber-600',
+    high: 'text-orange-600',
+    critical: 'text-rose-600 font-bold'
+};
 
 export default function TicketsPage() {
     const [tickets, setTickets] = useState<any[]>([]);
@@ -25,37 +36,52 @@ export default function TicketsPage() {
 
     return (
         <div className="space-y-5">
-            <div className="flex items-center justify-between">
-                <div><h1 className="text-2xl font-bold text-white">Support Tickets</h1><p className="text-slate-400 text-sm mt-1">{total} total tickets from all companies</p></div>
-                <select value={filter} onChange={e => setFilter(e.target.value)} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                    <option value="">All Status</option>
-                    {['open', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'].map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+            <div className="flex items-center justify-between mb-8">
+                <div><h1 className="text-2xl font-black text-slate-900 tracking-tight">Support Tickets</h1><p className="text-slate-500 text-sm font-medium mt-1 uppercase tracking-wider text-[10px]">{total} active support threads identified</p></div>
+                <select value={filter} onChange={e => setFilter(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-2xl px-5 py-3 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all shadow-sm min-w-[180px] appearance-none cursor-pointer">
+                    <option value="">Status Filter: All</option>
+                    {['open', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'].map(s => <option key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</option>)}
                 </select>
             </div>
 
-            <div className="space-y-3">
-                {loading ? [...Array(5)].map((_, i) => <div key={i} className="h-20 bg-slate-800 rounded-2xl animate-pulse" />) : tickets.length === 0 ? (
-                    <div className="text-center py-20 text-slate-500">No tickets found</div>
+            <div className="grid gap-4">
+                {loading ? [...Array(5)].map((_, i) => <div key={i} className="h-24 bg-slate-50 border border-slate-200 rounded-3xl animate-pulse" />) : tickets.length === 0 ? (
+                    <div className="text-center py-24 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                        <LifeBuoy className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No active tickets found</p>
+                    </div>
                 ) : tickets.map(t => (
-                    <Link key={t._id} href={`/superadmin/tickets/${t._id}`} className="block bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-violet-500/30 transition-colors">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-3 flex-1">
-                                <div className="w-9 h-9 rounded-xl bg-violet-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <LifeBuoy className="w-4 h-4 text-violet-400" />
+                    <Link key={t._id} href={`/superadmin/tickets/${t._id}`} className="block bg-white border border-slate-100 rounded-[2rem] p-6 hover:border-sky-500/50 hover:shadow-xl hover:shadow-sky-50/50 transition-all group relative overflow-hidden active:scale-[0.99]">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-sky-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="flex items-center justify-between gap-6">
+                            <div className="flex items-center gap-5 flex-1">
+                                <div className="w-14 h-14 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center flex-shrink-0 group-hover:bg-sky-100 transition-colors">
+                                    <MessageSquare className="w-6 h-6 text-sky-600" />
                                 </div>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className="text-sm font-bold text-white">{t.subject}</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[t.status] || ''}`}>{t.status.replace('_', ' ')}</span>
-                                        <span className={`text-xs font-semibold ${PRIORITY_COLORS[t.priority] || ''}`}>▲ {t.priority}</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-3 mb-1.5 overflow-hidden">
+                                        <h3 className="text-lg font-black text-slate-900 truncate group-hover:text-sky-600 transition-colors">{t.subject}</h3>
+                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex-shrink-0 ${STATUS_COLORS[t.status] || ''}`}>{t.status.replace('_', ' ')}</span>
                                     </div>
-                                    <p className="text-xs text-slate-400 mt-1">{t.companyName || 'Unknown Company'} · {t.raisedBy?.name} · {t.category}</p>
-                                    <p className="text-xs text-slate-500 mt-1 line-clamp-1">{t.description}</p>
+                                    <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        <span className="text-slate-600">{t.companyName || 'Corporate Client'}</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                        <span>{t.raisedBy?.name}</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                        <span className={PRIORITY_COLORS[t.priority] || ''}>Priority: {t.priority}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1 flex-shrink-0 text-xs text-slate-500">
-                                <div className="flex items-center gap-1"><MessageSquare className="w-3.5 h-3.5" />{t.messages?.length || 0}</div>
-                                <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{new Date(t.createdAt).toLocaleDateString()}</div>
+                            <div className="flex items-center gap-8 pl-6 border-l border-slate-100">
+                                <div className="text-center">
+                                    <div className="text-lg font-black text-slate-900 tracking-tight">{t.messages?.length || 0}</div>
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Replies</div>
+                                </div>
+                                <div className="text-right min-w-[80px]">
+                                    <div className="text-sm font-black text-slate-900">{new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</div>
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Raised</div>
+                                </div>
                             </div>
                         </div>
                     </Link>

@@ -37,71 +37,110 @@ export default function CouponsPage() {
     return (
         <div className="space-y-5">
             <Toaster position="top-center" />
-            <div className="flex items-center justify-between">
-                <div><h1 className="text-2xl font-bold text-white">Coupons & Discounts</h1><p className="text-slate-400 text-sm mt-1">Manage discount codes for your platform</p></div>
-                <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-xl transition-colors">
-                    <Plus className="w-4 h-4" /> New Coupon
+            <div className="flex items-center justify-between mb-8">
+                <div><h1 className="text-2xl font-black text-slate-900 tracking-tight">Coupons & Discounts</h1><p className="text-slate-500 text-sm font-medium mt-1 uppercase tracking-wider text-[10px]">Manage platform-wide promotional campaigns</p></div>
+                <button onClick={() => setShowCreate(true)} className="group flex items-center gap-3 px-6 py-3.5 bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-black uppercase tracking-[0.15em] rounded-2xl transition-all shadow-lg shadow-sky-500/25 active:scale-95">
+                    <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+                    Generate Coupon
                 </button>
             </div>
 
             {showCreate && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-                    <form onSubmit={create} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
-                        <h2 className="text-lg font-bold text-white">Create Coupon</h2>
-                        {[{ label: 'Coupon Code', key: 'couponCode', type: 'text', placeholder: 'INSTAURA20' }, { label: 'Discount Value', key: 'discountValue', type: 'number', placeholder: '10' }, { label: 'Max Uses (blank = unlimited)', key: 'maxUses', type: 'number', placeholder: 'e.g. 100' }, { label: 'Expires At (optional)', key: 'expiresAt', type: 'date', placeholder: '' }, { label: 'Description', key: 'description', type: 'text', placeholder: 'Launch discount' }].map(f => (
-                            <div key={f.key}>
-                                <label className="block text-xs text-slate-400 mb-1.5 font-semibold">{f.label}</label>
-                                <input type={f.type} value={(form as any)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+                    <form onSubmit={create} className="bg-white border border-slate-200 rounded-[2.5rem] p-8 w-full max-w-xl shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 shadow-sm border border-sky-100">
+                                <Tag className="w-6 h-6" />
                             </div>
-                        ))}
-                        <div>
-                            <label className="block text-xs text-slate-400 mb-1.5 font-semibold">Discount Type</label>
-                            <select value={form.discountType} onChange={e => setForm(p => ({ ...p, discountType: e.target.value }))}
-                                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                                <option value="percentage">Percentage (%)</option>
-                                <option value="fixed">Fixed Amount (₹)</option>
-                            </select>
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Create New Coupon</h2>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Define redemption rules and limits</p>
+                            </div>
                         </div>
-                        <div className="flex gap-3">
-                            <button type="button" onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold">Cancel</button>
-                            <button type="submit" className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold">Create</button>
+
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                            <div className="col-span-2">
+                                <label className="block text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest ml-1">Redemption Code</label>
+                                <input type="text" value={form.couponCode} onChange={e => setForm(p => ({ ...p, couponCode: e.target.value.toUpperCase() }))} placeholder="INSTAURA2025" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all placeholder:text-slate-300 font-mono" />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest ml-1">Discount Type</label>
+                                <select value={form.discountType} onChange={e => setForm(p => ({ ...p, discountType: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all appearance-none cursor-pointer">
+                                    <option value="percentage">PERCENTAGE (%)</option>
+                                    <option value="fixed">FIXED AMOUNT (₹)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest ml-1">Reward Value</label>
+                                <input type="number" value={form.discountValue} onChange={e => setForm(p => ({ ...p, discountValue: +e.target.value }))} placeholder="e.g. 10" required className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all" />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest ml-1">Usage Limit</label>
+                                <input type="number" value={form.maxUses} onChange={e => setForm(p => ({ ...p, maxUses: e.target.value }))} placeholder="Unlimited" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all" />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest ml-1">Expiry Date</label>
+                                <input type="date" value={form.expiresAt} onChange={e => setForm(p => ({ ...p, expiresAt: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all cursor-pointer" />
+                            </div>
+
+                            <div className="col-span-2">
+                                <label className="block text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest ml-1">Program Description</label>
+                                <input type="text" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Summer sale 2025 promotion" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all placeholder:text-slate-300" />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                            <button type="button" onClick={() => setShowCreate(false)} className="flex-1 py-4 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all">Abort</button>
+                            <button type="submit" className="flex-2 py-4 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-sky-500/20 active:scale-95">Activate Coupon</button>
                         </div>
                     </form>
                 </div>
             )}
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden relative">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b border-slate-800">
-                            {['Code', 'Type', 'Value', 'Used / Max', 'Expires', 'Status', ''].map(h => (
-                                <th key={h} className="text-left px-5 py-3.5 text-slate-400 font-semibold text-xs uppercase tracking-wider">{h}</th>
+                        <tr className="bg-slate-50/80 border-b border-slate-200">
+                            {['Promotion Code', 'Type', 'Reward Value', 'Redemptions', 'Valid Until', 'Status', ''].map(h => (
+                                <th key={h} className="text-left px-6 py-4 text-slate-500 font-bold text-[10px] uppercase tracking-[0.1em]">{h}</th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/50">
-                        {loading ? [...Array(4)].map((_, i) => <tr key={i}><td colSpan={7} className="px-5 py-4"><div className="h-4 bg-slate-800 rounded animate-pulse" /></td></tr>) : coupons.length === 0 ? (
-                            <tr><td colSpan={7} className="text-center py-12 text-slate-500">No coupons yet</td></tr>
+                    <tbody className="divide-y divide-slate-100">
+                        {loading ? [...Array(4)].map((_, i) => <tr key={i}><td colSpan={7} className="px-6 py-6"><div className="h-4 bg-slate-50 rounded-full animate-pulse w-full" /></td></tr>) : coupons.length === 0 ? (
+                            <tr><td colSpan={7} className="text-center py-24 bg-slate-50/30 text-slate-400 font-bold uppercase tracking-widest text-xs">No promotion catalogs identified</td></tr>
                         ) : coupons.map(c => (
-                            <tr key={c._id} className="hover:bg-slate-800/30 transition-colors">
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <Tag className="w-4 h-4 text-violet-400" />
-                                        <span className="font-mono font-bold text-violet-300">{c.couponCode}</span>
+                            <tr key={c._id} className="hover:bg-sky-50/30 transition-all group">
+                                <td className="px-6 py-5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600 border border-sky-100 group-hover:scale-110 transition-transform">
+                                            <Tag className="w-4 h-4" />
+                                        </div>
+                                        <span className="font-mono font-black text-sky-600 tracking-wider text-sm">{c.couponCode}</span>
                                     </div>
                                 </td>
-                                <td className="px-5 py-4 text-slate-400 capitalize">{c.discountType}</td>
-                                <td className="px-5 py-4 text-white font-bold">{c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`}</td>
-                                <td className="px-5 py-4 text-slate-400">{c.usedCount} / {c.maxUses ?? '∞'}</td>
-                                <td className="px-5 py-4 text-slate-400 text-xs">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : 'Never'}</td>
-                                <td className="px-5 py-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${c.isActive ? 'bg-emerald-400/10 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>{c.isActive ? 'Active' : 'Inactive'}</span>
+                                <td className="px-6 py-5 text-slate-500 font-bold uppercase tracking-widest text-[10px]">{c.discountType}</td>
+                                <td className="px-6 py-5 text-slate-900 font-black text-sm">{c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`}</td>
+                                <td className="px-6 py-5">
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="text-slate-900 font-black text-sm">{c.usedCount} <span className="text-slate-400 text-[10px] font-bold">/ {c.maxUses ?? '∞'}</span></span>
+                                        <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-sky-500" style={{ width: c.maxUses ? `${Math.min((c.usedCount / c.maxUses) * 100, 100)}%` : '0%' }} />
+                                        </div>
+                                    </div>
                                 </td>
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center gap-1 justify-end">
-                                        <button onClick={() => toggle(c._id)} className={`p-2 rounded-lg transition-colors ${c.isActive ? 'text-amber-400 hover:bg-amber-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'}`}><Power className="w-4 h-4" /></button>
-                                        <button onClick={() => del(c._id)} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                <td className="px-6 py-5 text-slate-500 font-bold text-xs">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB') : 'PERPETUAL'}</td>
+                                <td className="px-6 py-5">
+                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${c.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{c.isActive ? 'Active' : 'Archived'}</span>
+                                </td>
+                                <td className="px-6 py-5">
+                                    <div className="flex items-center gap-2 justify-end">
+                                        <button onClick={() => toggle(c._id)} className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all border ${c.isActive ? 'text-amber-500 bg-amber-50 border-amber-100 hover:bg-amber-100' : 'text-emerald-500 bg-emerald-50 border-emerald-100 hover:bg-emerald-100'}`} title={c.isActive ? 'Deactivate' : 'Reactivate'}><Power className="w-4 h-4" /></button>
+                                        <button onClick={() => del(c._id)} className="w-9 h-9 flex items-center justify-center text-rose-500 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 transition-all"><Trash2 className="w-4 h-4" /></button>
                                     </div>
                                 </td>
                             </tr>

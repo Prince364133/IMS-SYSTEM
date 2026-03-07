@@ -32,8 +32,9 @@ router.use(superAdminAudit);
 
 // Auth
 router.get('/auth/me', authCtrl.getMe);
-router.post('/auth/logout', authCtrl.logout);
+router.put('/auth/profile', authCtrl.updateProfile);
 router.put('/auth/change-password', authCtrl.changePassword);
+router.post('/auth/logout', authCtrl.logout);
 
 // Overview
 router.get('/overview', overviewCtrl.getOverview);

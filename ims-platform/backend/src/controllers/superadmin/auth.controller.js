@@ -30,6 +30,26 @@ exports.getMe = async (req, res) => {
     res.json({ superAdmin: req.superAdmin });
 };
 
+exports.updateProfile = async (req, res) => {
+    try {
+        const { name, email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required' });
+
+        const existingEmail = await SuperAdmin.findOne({ email: email.toLowerCase(), _id: { $ne: req.superAdmin._id } });
+        if (existingEmail) return res.status(400).json({ error: 'Email already in use' });
+
+        const admin = await SuperAdmin.findById(req.superAdmin._id);
+        if (name) admin.name = name;
+        admin.email = email.toLowerCase();
+        await admin.save();
+
+        res.json({ message: 'Profile updated successfully', superAdmin: admin.toSafeObject() });
+    } catch (err) {
+        console.error('Update profile error:', err);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+};
+
 exports.changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -37,6 +57,7 @@ exports.changePassword = async (req, res) => {
         const admin = await SuperAdmin.findById(req.superAdmin._id);
         const valid = await admin.comparePassword(currentPassword);
         if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
         admin.passwordHash = newPassword; // pre-save hook hashes it
         await admin.save();
         res.json({ message: 'Password updated successfully' });
