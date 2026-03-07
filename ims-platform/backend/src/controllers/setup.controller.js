@@ -76,6 +76,13 @@ exports.registerTenant = async (req, res) => {
 
     } catch (err) {
         console.error('Register Tenant Error:', err);
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern)[0];
+            const message = field === 'companyName'
+                ? 'A company with this name is already registered.'
+                : 'A company is already registered with this admin email.';
+            return res.status(409).json({ success: false, error: message });
+        }
         res.status(500).json({ success: false, error: 'Failed to register company.' });
     }
 };

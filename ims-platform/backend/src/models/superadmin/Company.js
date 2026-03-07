@@ -28,9 +28,9 @@ function decrypt(text) {
 }
 
 const companySchema = new mongoose.Schema({
-    companyName: { type: String, required: true, trim: true },
+    companyName: { type: String, required: true, trim: true, unique: true },
     adminName: { type: String, required: true, trim: true },
-    adminEmail: { type: String, required: true, lowercase: true, trim: true },
+    adminEmail: { type: String, required: true, lowercase: true, trim: true, unique: true },
     adminPasswordHash: { type: String, required: true, select: false },
     _mongoUri: { type: String }, // encrypted
     subscriptionPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
