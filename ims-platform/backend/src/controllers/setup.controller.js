@@ -159,19 +159,21 @@ exports.configureTenant = async (req, res) => {
         }
 
         // Seed the Admin User into the Tenant DB
-        let adminUser = await TenantUser.findOne({ email: company.adminEmail });
-        if (!adminUser) {
-            await TenantUser.create({
-                name: company.adminName,
-                email: company.adminEmail,
-                password: 'temp_will_never_be_checked_locally', // Local tenant auth password logic bypasses
-                roles: ['admin'],
-                isActive: true
-            });
-            // Overwrite password directly to match systemic hash for safety if ever queried
-            await TenantUser.updateOne({ email: company.adminEmail }, { password: company.adminPasswordHash });
-            console.log(`✅ Admin user seeded for ${company.companyName}`);
-        }
+        // Use updateOne with upsert to avoid triggering pre-save hooks (double hashing)
+        await TenantUser.updateOne(
+            { email: company.adminEmail.toLowerCase() },
+            {
+                $set: {
+                    name: company.adminName,
+                    email: company.adminEmail.toLowerCase(),
+                    password: company.adminPasswordHash,
+                    roles: ['admin'],
+                    isActive: true
+                }
+            },
+            { upsert: true }
+        );
+        console.log(`✅ Admin user seeded/updated for ${company.companyName}`);
 
         // Map Admin in the System Database for Central Login
         const TenantUserMapping = require('../models/superadmin/TenantUserMapping');

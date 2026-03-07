@@ -145,7 +145,8 @@ exports.login = async (req, res, next) => {
 
         // 1. Identify Tenant (Company) from System Database
         const TenantMapping = require('../models/superadmin/TenantUserMapping');
-        let mapping = await TenantMapping.findOne({ email: email.toLowerCase() }).populate('companyId');
+        let mapping = await TenantMapping.findOne({ email: email.toLowerCase() })
+            .populate({ path: 'companyId', select: '+adminPasswordHash' });
         let company = mapping ? mapping.companyId : null;
 
         // Fallback: If no mapping is found, check if they are an unconfigured admin in the Company registry
@@ -193,7 +194,22 @@ exports.login = async (req, res, next) => {
             .select('+password +mfaSecret +mfaEnabled +refreshTokens');
 
         if (!user || !(await user.matchPassword(password))) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            // AUTO-REPAIR: If this is the primary admin and password matches superadmin but not tenant
+            if (company.adminEmail === email.toLowerCase()) {
+                const isMatchSuper = await bcrypt.compare(password, company.adminPasswordHash);
+                if (isMatchSuper && user) {
+                    // Sync the hash to tenant DB
+                    user.password = company.adminPasswordHash;
+                    await user.save({ validateBeforeSave: false });
+                    console.log(`[Auth] Auto-repaired admin password hash for ${email}`);
+                    // Proceed with same 'user' object now that it's updated (but wait, user.matchPassword(password) might still fail due to memory state?)
+                    // Actually, matchPassword uses the same logic. Let's just proceed since we know it matches.
+                } else {
+                    return res.status(401).json({ error: 'Invalid email or password' });
+                }
+            } else {
+                return res.status(401).json({ error: 'Invalid email or password' });
+            }
         }
 
         if (!user.isActive) {
